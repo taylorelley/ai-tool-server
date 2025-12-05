@@ -1,0 +1,66 @@
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Docker volumes and data
+volumes/
+volumes/**/*
+
+# Backups
+backup-*/
+*.tar.gz
+*.sql
+*.dump
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+*.tmp
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Custom scripts (may contain sensitive data)
+*.local.sh
+
+# Database exports
+*.sql
+*.dump
+*.db
+
+# Keep template files
+!.env.template
