@@ -441,6 +441,76 @@ else
 fi
 echo ""
 
+echo -e "${BLUE}=== Step 8: Advanced Configuration (Optional) ===${NC}"
+echo ""
+
+# Track if we need to create override file
+OVERRIDE_NEEDED=false
+OVERRIDE_CONTENT="services:\n"
+
+# PostgreSQL for Open WebUI
+if prompt_yes_no "Use PostgreSQL database for Open WebUI instead of SQLite?" "n"; then
+    OVERRIDE_NEEDED=true
+    OVERRIDE_CONTENT+="  open-webui:\n"
+    OVERRIDE_CONTENT+="    environment:\n"
+    OVERRIDE_CONTENT+="      - DATABASE_URL=postgresql://postgres:\${POSTGRES_PASSWORD}@db:5432/postgres\n"
+    echo -e "${GREEN}✓${NC} PostgreSQL will be configured for Open WebUI"
+    echo ""
+fi
+
+# Resource limits
+if prompt_yes_no "Configure resource limits for production?" "n"; then
+    OVERRIDE_NEEDED=true
+    echo ""
+    echo "Configuring resource limits for main services..."
+
+    # Add Langflow resource limits
+    if [ "$OVERRIDE_CONTENT" = "services:\n" ]; then
+        OVERRIDE_CONTENT+="  langflow:\n"
+    else
+        OVERRIDE_CONTENT+="\n  langflow:\n"
+    fi
+    OVERRIDE_CONTENT+="    deploy:\n"
+    OVERRIDE_CONTENT+="      resources:\n"
+    OVERRIDE_CONTENT+="        limits:\n"
+    OVERRIDE_CONTENT+="          cpus: '2'\n"
+    OVERRIDE_CONTENT+="          memory: 4G\n"
+    OVERRIDE_CONTENT+="        reservations:\n"
+    OVERRIDE_CONTENT+="          cpus: '1'\n"
+    OVERRIDE_CONTENT+="          memory: 2G\n"
+
+    echo -e "${GREEN}✓${NC} Resource limits configured (2 CPU, 4GB RAM max per service)"
+    echo ""
+fi
+
+# Create override file if needed
+if [ "$OVERRIDE_NEEDED" = true ]; then
+    # Check if override file already exists
+    if [ -f docker-compose.override.yml ]; then
+        echo -e "${YELLOW}⚠️  docker-compose.override.yml already exists!${NC}"
+        read -p "Overwrite? This will backup the existing file. (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            backup_file="docker-compose.override.yml.backup.$(date +%Y%m%d_%H%M%S)"
+            echo -e "${GREEN}✓${NC} Backing up existing override file to $backup_file"
+            cp docker-compose.override.yml "$backup_file"
+        else
+            echo -e "${YELLOW}⚠️  Skipping override file creation${NC}"
+            OVERRIDE_NEEDED=false
+        fi
+    fi
+
+    if [ "$OVERRIDE_NEEDED" = true ]; then
+        echo -e "$OVERRIDE_CONTENT" > docker-compose.override.yml
+        echo -e "${GREEN}✓${NC} Created docker-compose.override.yml"
+        echo "   Advanced configurations will be applied on next 'docker compose up'"
+    fi
+else
+    echo -e "${BLUE}ℹ${NC}  No advanced configuration selected - using defaults"
+    echo "   You can always create docker-compose.override.yml later"
+fi
+echo ""
+
 # Set proper permissions
 chmod 600 .env
 
@@ -457,6 +527,9 @@ if [ "$PRODUCTION" = true ]; then
 fi
 if [ -n "$SMTP_HOST" ]; then
     echo "  • SMTP configured"
+fi
+if [ "$OVERRIDE_NEEDED" = true ] && [ -f docker-compose.override.yml ]; then
+    echo "  • docker-compose.override.yml created with advanced settings"
 fi
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

@@ -59,6 +59,10 @@ The setup script will:
 - Generate cryptographically secure secrets
 - Configure service URLs and AI backends
 - Set up SMTP if needed
+- **Create docker-compose.override.yml** for advanced configurations:
+  - PostgreSQL database for Open WebUI (instead of SQLite)
+  - Resource limits for production deployments
+  - Automatic backup and merge of existing override files
 
 ### 2. Create Required Supabase Files
 
