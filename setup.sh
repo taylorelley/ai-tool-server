@@ -310,14 +310,7 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
         fi
     done
 
-    while true; do
-        prompt_with_default "SMTP Username/Email" "" SMTP_USER
-        if [ -z "$SMTP_USER" ] || validate_email "$SMTP_USER"; then
-            break
-        else
-            echo -e "${RED}✗ Invalid email format. Please try again.${NC}"
-        fi
-    done
+    prompt_with_default "SMTP Username" "" SMTP_USER
 
     echo "SMTP Password:"
     read -s SMTP_PASS
@@ -399,20 +392,34 @@ echo "1. Log into your OAuth provider: $OAUTH_URL"
 echo "2. Create an OAuth2/OpenID Provider for Open WebUI:"
 echo "   - Redirect URI: ${OPEN_WEBUI_URL}/oauth/oidc/callback"
 echo "   - Scopes: openid, email, profile"
-echo "3. Copy the Client ID and Client Secret"
+echo "3. Note the OpenID Configuration URL (well-known endpoint)"
+echo "4. Copy the Client ID and Client Secret"
+echo ""
+
+echo "Configure OpenID Provider URL (well-known configuration endpoint):"
+echo "Examples:"
+echo "  - Authentik: https://auth.yourdomain.com/application/o/open-webui/.well-known/openid-configuration"
+echo "  - Keycloak: https://keycloak.yourdomain.com/realms/myrealm/.well-known/openid-configuration"
+echo "  - Google: https://accounts.google.com/.well-known/openid-configuration"
+echo ""
+prompt_with_default "OpenID Provider URL" "" OPENID_URL
+if [ -n "$OPENID_URL" ]; then
+    replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
+    echo -e "${GREEN}✓${NC} OpenID Provider URL configured"
+fi
 echo ""
 
 if prompt_yes_no "Do you already have OAuth credentials?" "n"; then
     echo ""
     prompt_with_default "Open WebUI OAuth Client ID" "" OPEN_WEBUI_CLIENT_ID
-    
+
     if [ -n "$OPEN_WEBUI_CLIENT_ID" ]; then
         replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OPEN_WEBUI_CLIENT_ID"
-        
+
         echo "Open WebUI OAuth Client Secret:"
         read -s OPEN_WEBUI_CLIENT_SECRET
         echo ""
-        
+
         if [ -n "$OPEN_WEBUI_CLIENT_SECRET" ]; then
             replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OPEN_WEBUI_CLIENT_SECRET"
             echo -e "${GREEN}✓${NC} OAuth credentials configured"
@@ -421,6 +428,7 @@ if prompt_yes_no "Do you already have OAuth credentials?" "n"; then
 else
     echo -e "${YELLOW}⚠️  You'll need to configure OAuth later${NC}"
     echo "   Update these in .env after creating the provider:"
+    echo "   - OPENID_PROVIDER_URL"
     echo "   - OPEN_WEBUI_OAUTH_CLIENT_ID"
     echo "   - OPEN_WEBUI_OAUTH_CLIENT_SECRET"
 fi
@@ -429,12 +437,12 @@ echo ""
 echo -e "${BLUE}=== Step 7: Additional Configuration ===${NC}"
 echo ""
 
-if prompt_yes_no "Disable local login (SSO only for Open WebUI)?" "n"; then
-    replace_env_value "ENABLE_LOCAL_LOGIN" "false"
-    echo -e "${GREEN}✓${NC} Local login disabled (SSO only)"
+if prompt_yes_no "Disable password authentication (SSO only for Open WebUI)?" "n"; then
+    replace_env_value "ENABLE_PASSWORD_AUTH" "false"
+    echo -e "${GREEN}✓${NC} Password authentication disabled (SSO only)"
 else
-    replace_env_value "ENABLE_LOCAL_LOGIN" "true"
-    echo -e "${GREEN}✓${NC} Local login enabled"
+    replace_env_value "ENABLE_PASSWORD_AUTH" "true"
+    echo -e "${GREEN}✓${NC} Password authentication enabled (can coexist with OAuth)"
 fi
 echo ""
 
