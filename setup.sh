@@ -22,6 +22,40 @@ echo "with External Authentik SSO Integration"
 echo -e "==============================================${NC}"
 echo ""
 
+# Pre-flight checks
+echo -e "${BLUE}Running pre-flight checks...${NC}"
+echo ""
+
+# Check for required commands
+MISSING_COMMANDS=()
+for cmd in openssl curl docker; do
+    if ! command -v $cmd &> /dev/null; then
+        MISSING_COMMANDS+=("$cmd")
+    fi
+done
+
+if [ ${#MISSING_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${RED}✗ Error: The following required commands are missing:${NC}"
+    for cmd in "${MISSING_COMMANDS[@]}"; do
+        echo "  - $cmd"
+    done
+    echo ""
+    echo "Please install the missing dependencies and try again."
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} All required commands found (openssl, curl, docker)"
+
+# Check Docker is running
+if ! docker info &> /dev/null; then
+    echo -e "${RED}✗ Error: Docker is not running${NC}"
+    echo "Please start Docker and try again."
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} Docker is running"
+echo ""
+
 # Check if .env already exists
 if [ -f .env ]; then
     echo -e "${YELLOW}⚠️  .env file already exists!${NC}"
@@ -57,18 +91,19 @@ generate_long_secret() {
     openssl rand -hex $(($length / 2))
 }
 
+# Detect sed version and set appropriate flags
+if sed --version 2>&1 | grep -q GNU; then
+    SED_INPLACE=(-i)
+else
+    SED_INPLACE=(-i '')
+fi
+
 # Function to replace a value in .env (safely handles special characters)
 replace_env_value() {
     local key=$1
     local value=$2
-    
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        sed -i '' "s|^${key}=.*|${key}=${value}|" .env
-    else
-        # Linux
-        sed -i "s|^${key}=.*|${key}=${value}|" .env
-    fi
+
+    sed "${SED_INPLACE[@]}" "s|^${key}=.*|${key}=${value}|" .env
 }
 
 # Function to prompt for input with default value
@@ -91,18 +126,48 @@ prompt_with_default() {
 prompt_yes_no() {
     local prompt=$1
     local default=$2
-    
+
     if [ "$default" = "y" ]; then
         read -p "$prompt (Y/n): " -n 1 -r
     else
         read -p "$prompt (y/N): " -n 1 -r
     fi
     echo
-    
+
     if [ "$default" = "y" ]; then
         [[ ! $REPLY =~ ^[Nn]$ ]]
     else
         [[ $REPLY =~ ^[Yy]$ ]]
+    fi
+}
+
+# Function to validate URL format
+validate_url() {
+    local url=$1
+    if [[ $url =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to validate email format
+validate_email() {
+    local email=$1
+    if [[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to validate port number
+validate_port() {
+    local port=$1
+    if [[ $port =~ ^[0-9]+$ ]] && [ $port -ge 1 ] && [ $port -le 65535 ]; then
+        return 0
+    else
+        return 1
     fi
 }
 
@@ -114,9 +179,16 @@ echo "  - https://auth.yourdomain.com"
 echo "  - http://192.168.1.100:9000"
 echo "  - http://host.docker.internal:9000 (if Authentik on same Docker host)"
 echo ""
-prompt_with_default "Authentik URL" "http://localhost:9000" AUTHENTIK_URL
-replace_env_value "AUTHENTIK_URL" "$AUTHENTIK_URL"
-echo -e "${GREEN}✓${NC} Authentik URL set"
+while true; do
+    prompt_with_default "Authentik URL" "http://localhost:9000" AUTHENTIK_URL
+    if validate_url "$AUTHENTIK_URL"; then
+        replace_env_value "AUTHENTIK_URL" "$AUTHENTIK_URL"
+        echo -e "${GREEN}✓${NC} Authentik URL set"
+        break
+    else
+        echo -e "${RED}✗ Invalid URL format. Please try again.${NC}"
+    fi
+done
 echo ""
 
 echo -e "${BLUE}=== Step 2: Service URLs ===${NC}"
@@ -156,7 +228,7 @@ else
     LANGFLOW_URL="http://localhost:7860"
     SUPABASE_PUBLIC_URL="http://localhost:8000"
     API_EXTERNAL_URL="http://localhost:8000"
-    SITE_URL="http://localhost:3000"
+    SITE_URL="http://localhost:3001"
     
     echo -e "${GREEN}✓${NC} Using localhost URLs for development"
 fi
@@ -222,12 +294,38 @@ echo ""
 if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
     echo ""
     prompt_with_default "SMTP Host" "smtp.gmail.com" SMTP_HOST
-    prompt_with_default "SMTP Port" "587" SMTP_PORT
-    prompt_with_default "SMTP Username/Email" "" SMTP_USER
+
+    while true; do
+        prompt_with_default "SMTP Port" "587" SMTP_PORT
+        if validate_port "$SMTP_PORT"; then
+            break
+        else
+            echo -e "${RED}✗ Invalid port number. Please enter a number between 1-65535.${NC}"
+        fi
+    done
+
+    while true; do
+        prompt_with_default "SMTP Username/Email" "" SMTP_USER
+        if [ -z "$SMTP_USER" ] || validate_email "$SMTP_USER"; then
+            break
+        else
+            echo -e "${RED}✗ Invalid email format. Please try again.${NC}"
+        fi
+    done
+
     echo "SMTP Password:"
     read -s SMTP_PASS
     echo ""
-    prompt_with_default "From Email Address" "$SMTP_USER" SMTP_ADMIN_EMAIL
+
+    while true; do
+        prompt_with_default "From Email Address" "$SMTP_USER" SMTP_ADMIN_EMAIL
+        if validate_email "$SMTP_ADMIN_EMAIL"; then
+            break
+        else
+            echo -e "${RED}✗ Invalid email format. Please try again.${NC}"
+        fi
+    done
+
     prompt_with_default "From Name" "AI Tool Server" SMTP_SENDER_NAME
     
     if prompt_yes_no "Use TLS?" "y"; then

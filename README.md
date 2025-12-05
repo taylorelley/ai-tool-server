@@ -34,6 +34,8 @@ This stack integrates AI development tools with Supabase as the backend storage 
 - Docker Engine 20.10+
 - Docker Compose V2
 - 4GB+ RAM recommended
+- `openssl` command (for generating secrets)
+- `curl` command (for downloading files)
 - (Optional) Ollama running locally for LLM inference
 
 ## 🚀 Quick Start
@@ -44,12 +46,19 @@ This stack integrates AI development tools with Supabase as the backend storage 
 # Clone or download the stack files
 cd ai-tool-server
 
-# Make setup script executable
-chmod +x setup.sh
+# Make scripts executable
+chmod +x setup.sh scripts/*.sh
 
-# Run setup to generate secure secrets
+# Run setup to generate secure secrets and configure the stack
 ./setup.sh
 ```
+
+The setup script will:
+- Check for required dependencies (docker, openssl, curl)
+- Validate all your inputs (URLs, emails, ports)
+- Generate cryptographically secure secrets
+- Configure service URLs and AI backends
+- Set up SMTP if needed
 
 ### 2. Create Required Supabase Files
 
@@ -92,9 +101,9 @@ Edit `.env` and update:
 
 ```bash
 # For production deployment
-SUPABASE_PUBLIC_URL=https://your-domain.com
+SUPABASE_PUBLIC_URL=https://api.your-domain.com
 API_EXTERNAL_URL=https://api.your-domain.com
-SITE_URL=https://your-domain.com
+SITE_URL=https://studio.your-domain.com
 
 # If using Ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
@@ -109,7 +118,22 @@ SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 ```
 
-### 4. Start the Stack
+### 4. Validate Configuration
+
+Before starting, run the health check:
+
+```bash
+./scripts/health-check.sh
+```
+
+This validates:
+- All required environment variables are set
+- No default "changeme" passwords remain
+- Required files and directories exist
+- Ports are available
+- Docker is running
+
+### 5. Start the Stack
 
 ```bash
 # Start all services
@@ -122,14 +146,14 @@ docker compose logs -f
 docker compose ps
 ```
 
-### 5. Access Services
+### 6. Access Services
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | Langflow | http://localhost:7860 | Create on first visit |
 | Open WebUI | http://localhost:8080 | Create on first visit |
-| Supabase Studio | http://localhost:3001 | From .env |
-| Supabase API | http://localhost:8000 | Use API keys |
+| Supabase Studio | http://localhost:3001 | From .env (DASHBOARD_USERNAME/PASSWORD) |
+| Supabase API | http://localhost:8000 | Use API keys (ANON_KEY/SERVICE_ROLE_KEY) |
 
 ## 🔧 Configuration
 
@@ -184,6 +208,23 @@ volumes/
 7. **TLS/SSL in production** - Use reverse proxy (nginx/Traefik)
 
 ## 🛠️ Management Commands
+
+### Health Check
+
+Run before and after deployment to validate configuration:
+
+```bash
+# Check configuration and service status
+./scripts/health-check.sh
+```
+
+The health check validates:
+- Environment variables are properly set
+- No insecure default passwords remain
+- All required files exist
+- Ports are available
+- Docker is running
+- AI backend is configured
 
 ### Service Control
 
@@ -253,6 +294,8 @@ LANGFLOW_PORT=7861
 OPEN_WEBUI_PORT=8081
 STUDIO_PORT=3002
 ```
+
+**Note**: Studio port defaults to 3001 to avoid conflicts with common development servers.
 
 ### Database connection issues
 
@@ -343,60 +386,51 @@ curl http://localhost:3001/api/profile # Supabase Studio
 
 ## 🔄 Backup & Restore
 
-### Full Backup
+Automated backup and restore scripts are included in the `scripts/` directory.
+
+### Create a Backup
 
 ```bash
-#!/bin/bash
-# backup.sh - Backup all data
+# Create compressed backup
+./scripts/backup.sh
 
-BACKUP_DIR="backup-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP_DIR"
-
-# Stop services
-docker compose down
-
-# Backup volumes
-cp -r volumes "$BACKUP_DIR/"
-
-# Backup configuration
-cp .env "$BACKUP_DIR/"
-cp docker-compose.yaml "$BACKUP_DIR/"
-
-# Restart services
-docker compose up -d
-
-echo "Backup created in $BACKUP_DIR"
+# Create uncompressed backup
+./scripts/backup.sh false
 ```
+
+The backup script will:
+1. Stop services gracefully
+2. Copy all volumes (databases, configurations, files)
+3. Backup .env and docker-compose files
+4. Create backup metadata
+5. Compress the backup (optional)
+6. Restart services
+
+Backup includes:
+- All database data (Supabase, Langflow)
+- Uploaded files and storage
+- Configuration files (.env, docker-compose.yaml)
+- Edge functions
+- Logs
 
 ### Restore from Backup
 
 ```bash
-#!/bin/bash
-# restore.sh - Restore from backup
+# Restore from compressed backup
+./scripts/restore.sh backup-20240101-120000.tar.gz
 
-if [ -z "$1" ]; then
-    echo "Usage: ./restore.sh <backup-directory>"
-    exit 1
-fi
-
-BACKUP_DIR=$1
-
-# Stop services
-docker compose down -v
-
-# Restore volumes
-rm -rf volumes
-cp -r "$BACKUP_DIR/volumes" .
-
-# Restore configuration
-cp "$BACKUP_DIR/.env" .
-cp "$BACKUP_DIR/docker-compose.yaml" .
-
-# Start services
-docker compose up -d
-
-echo "Restore completed from $BACKUP_DIR"
+# Restore from uncompressed backup
+./scripts/restore.sh backup-20240101-120000
 ```
+
+The restore script will:
+1. Stop services
+2. Backup current data before restoring
+3. Extract and restore volumes
+4. Restore configuration files
+5. Restart services
+
+**Warning**: Restore will replace all current data. A safety backup is created automatically.
 
 ## 🌐 Production Deployment
 
@@ -598,7 +632,7 @@ Use with Row Level Security (RLS) to ensure users only access their own data.
 ### Complete Integration Guide
 
 For detailed examples, flow patterns, and advanced usage, see:
-**[LANGFLOW_SUPABASE_INTEGRATION.md](computer:///mnt/user-data/outputs/LANGFLOW_SUPABASE_INTEGRATION.md)**
+**[LANGFLOW_SUPABASE_INTEGRATION.md](docs/LANGFLOW_SUPABASE_INTEGRATION.md)**
 
 This guide includes:
 - Complete flow examples (chatbot with memory, RAG, etc.)
@@ -606,6 +640,51 @@ This guide includes:
 - Vector search setup
 - Security best practices
 - Testing procedures
+
+## 🔧 Advanced Configuration
+
+### Local Development Customization
+
+For local development customizations without modifying the main docker-compose.yaml:
+
+```bash
+# Create override file
+cp docker-compose.override.yml.template docker-compose.override.yml
+
+# Edit with your customizations
+nano docker-compose.override.yml
+
+# Docker Compose automatically merges override files
+docker compose up -d
+```
+
+Use cases for override file:
+- Add development tools (pgAdmin, Redis, etc.)
+- Change resource limits
+- Add custom environment variables
+- Mount additional volumes
+- Override ports without editing .env
+
+### Edge Functions
+
+Create custom Supabase Edge Functions:
+
+```bash
+# Create a new function
+mkdir -p volumes/functions/my-function
+nano volumes/functions/my-function/index.ts
+
+# Restart functions service
+docker compose restart functions
+
+# Access at: http://localhost:8000/functions/v1/my-function
+```
+
+See `volumes/functions/README.md` for detailed examples and documentation.
+
+Example functions included:
+- `hello-world` - Simple example function
+- `index.ts` - Main entrypoint with health check
 
 ## 📚 Additional Resources
 
@@ -615,6 +694,7 @@ This guide includes:
 - [Open WebUI Docs](https://docs.openwebui.com/)
 - [Supabase Docs](https://supabase.com/docs)
 - [Docker Compose Docs](https://docs.docker.com/compose/)
+- [Deno Edge Functions](https://deno.land/manual)
 
 ### Community & Support
 
@@ -643,6 +723,13 @@ Improvements and suggestions are welcome! Areas for contribution:
 - Playwright: 1.49.1
 
 To update versions, modify the version variables in `.env`.
+
+**Production Recommendation**: Pin specific versions in `.env` instead of using `latest` or `main` to ensure reproducible deployments:
+
+```bash
+LANGFLOW_VERSION=1.0.0
+OPEN_WEBUI_VERSION=v0.1.100
+```
 
 ## ⚠️ Known Limitations
 
@@ -720,11 +807,38 @@ This integrated stack is ideal for:
 
 If you encounter issues:
 
-1. Check the troubleshooting section above
-2. Review service logs: `docker compose logs [service-name]`
-3. Verify environment configuration
-4. Check GitHub issues for known problems
-5. Ensure system meets prerequisites
+1. **Run health check**: `./scripts/health-check.sh`
+2. **Check the troubleshooting section** above
+3. **Review service logs**: `docker compose logs [service-name]`
+4. **Verify environment configuration**: `cat .env | grep -v "^#" | grep -v "^$"`
+5. **Check GitHub issues** for known problems
+6. **Ensure system meets prerequisites**
+
+### Useful Diagnostic Commands
+
+```bash
+# Full health check
+./scripts/health-check.sh
+
+# Check all service status
+docker compose ps
+
+# View all logs
+docker compose logs
+
+# Check specific service
+docker compose logs -f langflow
+
+# Verify Docker resources
+docker system df
+docker stats
+
+# Test database connection
+docker compose exec db pg_isready -U postgres
+
+# Check network connectivity
+docker compose exec langflow curl http://kong:8000/health
+```
 
 ## 📄 License
 

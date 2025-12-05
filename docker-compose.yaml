@@ -9,7 +9,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     volumes:
-      - ./volumes/langflow/db:/var/lib/postgresql/data:z
+      - ./volumes/langflow/db:/var/lib/postgresql/data:Z
     environment:
       POSTGRES_DB: ${LANGFLOW_DB_NAME}
       POSTGRES_USER: ${LANGFLOW_DB_USER}
@@ -57,7 +57,7 @@ services:
       - SUPABASE_DB_USER=postgres
       - SUPABASE_DB_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      - ./volumes/langflow/data:/app/langflow:z
+      - ./volumes/langflow/data:/app/langflow:Z
     depends_on:
       postgres-langflow:
         condition: service_healthy
@@ -84,7 +84,7 @@ services:
     environment:
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     volumes:
-      - ./volumes/playwright:/ms-playwright:z
+      - ./volumes/playwright:/ms-playwright:Z
     networks:
       - ai-tools-net
 
@@ -93,7 +93,7 @@ services:
     image: ghcr.io/open-webui/open-webui:${OPEN_WEBUI_VERSION:-main}
     restart: unless-stopped
     volumes:
-      - ./volumes/open-webui/data:/app/backend/data:z
+      - ./volumes/open-webui/data:/app/backend/data:Z
     ports:
       - "${OPEN_WEBUI_PORT:-8080}:8080"
     environment:
@@ -146,7 +146,7 @@ services:
     image: supabase/studio:${STUDIO_VERSION:-2025.11.26-sha-8f096b5}
     restart: unless-stopped
     ports:
-      - "${STUDIO_PORT:-3000}:3000"
+      - "${STUDIO_PORT:-3001}:3000"
     healthcheck:
       test:
         [
@@ -335,7 +335,7 @@ services:
     image: supabase/storage-api:v${STORAGE_VERSION:-1.32.0}
     restart: unless-stopped
     volumes:
-      - ./volumes/storage:/var/lib/storage:z
+      - ./volumes/storage:/var/lib/storage:Z
     healthcheck:
       test:
         [
@@ -379,7 +379,7 @@ services:
     image: darthsim/imgproxy:v${IMGPROXY_VERSION:-3.8.0}
     restart: unless-stopped
     volumes:
-      - ./volumes/storage:/var/lib/storage:z
+      - ./volumes/storage:/var/lib/storage:Z
     healthcheck:
       test: ["CMD", "imgproxy", "health"]
       timeout: 5s
@@ -429,7 +429,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
-    command: ["start", "--main-service", "/home/deno/functions/main"]
+    command: ["start", "--main-service", "/home/deno/functions/index"]
     networks:
       - supabase-net
 
@@ -513,8 +513,8 @@ services:
     image: timberio/vector:${VECTOR_VERSION:-0.28.1-alpine}
     restart: unless-stopped
     volumes:
-      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
-      - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
+      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,Z
+      - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro
     healthcheck:
       test:
         [

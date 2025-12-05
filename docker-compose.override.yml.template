@@ -1,0 +1,68 @@
+############################################################
+# Docker Compose Override Template
+############################################################
+# Copy this file to docker-compose.override.yml for local
+# development customizations without modifying the main
+# docker-compose.yaml file.
+#
+# Usage:
+#   cp docker-compose.override.yml.template docker-compose.override.yml
+#   # Edit docker-compose.override.yml with your changes
+#   docker compose up -d
+#
+# Docker Compose automatically merges override files.
+############################################################
+
+services:
+  # Example: Customize Langflow with additional environment variables
+  # langflow:
+  #   environment:
+  #     - LANGFLOW_DEBUG=true
+  #     - CUSTOM_VAR=value
+  #   volumes:
+  #     - ./my-custom-flows:/app/custom-flows
+
+  # Example: Add resource limits for production
+  # langflow:
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '2'
+  #         memory: 4G
+  #       reservations:
+  #         cpus: '1'
+  #         memory: 2G
+
+  # Example: Change Open WebUI port without editing .env
+  # open-webui:
+  #   ports:
+  #     - "8081:8080"
+
+  # Example: Add development tools container
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   ports:
+  #     - "5050:80"
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@example.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   networks:
+  #     - supabase-net
+
+  # Example: Add Redis for caching
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./volumes/redis:/data
+  #   networks:
+  #     - ai-tools-net
+
+# Example: Add custom networks
+# networks:
+#   custom-net:
+#     driver: bridge
+
+# Example: Add named volumes
+# volumes:
+#   custom-data:
