@@ -683,8 +683,8 @@ docker compose restart functions
 See `volumes/functions/README.md` for detailed examples and documentation.
 
 Example functions included:
-- `hello-world` - Simple example function
-- `index.ts` - Main entrypoint with health check
+- `main/` - Main entrypoint (required by runtime)
+- `hello-world/` - Simple example function
 
 ## 📚 Additional Resources
 

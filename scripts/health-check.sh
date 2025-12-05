@@ -159,7 +159,7 @@ REQUIRED_FILES=(
     "volumes/api/kong.yml"
     "volumes/logs/vector.yml"
     "volumes/pooler/pooler.exs"
-    "volumes/functions/index.ts"
+    "volumes/functions/main/index.ts"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
