@@ -171,9 +171,11 @@ validate_port() {
     fi
 }
 
-echo -e "${BLUE}=== Step 1: External OAuth/OIDC Provider Configuration ===${NC}"
+echo -e "${BLUE}=== Step 1: OAuth/OIDC Provider Base URL ===${NC}"
 echo ""
-echo "Enter the URL of your OAuth/OIDC provider (Authentik, Keycloak, Auth0, etc.)."
+echo "Enter the BASE URL of your OAuth/OIDC provider."
+echo "This will be used for Langflow OAuth integration."
+echo ""
 echo "Examples:"
 echo "  - Authentik: https://auth.yourdomain.com"
 echo "  - Keycloak: https://keycloak.yourdomain.com/realms/myrealm"
@@ -181,20 +183,15 @@ echo "  - Auth0: https://yourtenant.auth0.com"
 echo "  - Local: http://host.docker.internal:9000"
 echo ""
 while true; do
-    prompt_with_default "OAuth Provider URL" "http://localhost:9000" OAUTH_URL
+    prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
     if validate_url "$OAUTH_URL"; then
         replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
-        echo -e "${GREEN}✓${NC} OAuth Provider URL set"
+        echo -e "${GREEN}✓${NC} OAuth Provider Base URL set"
         break
     else
         echo -e "${RED}✗ Invalid URL format. Please try again.${NC}"
     fi
 done
-
-echo ""
-prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
-replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
-echo -e "${GREEN}✓${NC} OAuth Provider Name set"
 echo ""
 
 echo -e "${BLUE}=== Step 2: Service URLs ===${NC}"
@@ -382,9 +379,9 @@ replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
 echo -e "  12. ${GREEN}✓${NC} Secret Key Base"
 echo ""
 
-echo -e "${BLUE}=== Step 6: OAuth/OIDC Configuration ===${NC}"
+echo -e "${BLUE}=== Step 6: Open WebUI OAuth/OIDC Configuration ===${NC}"
 echo ""
-echo "You need to configure OAuth providers in your OAuth/OIDC provider."
+echo "Configure Open WebUI-specific OAuth settings."
 echo ""
 echo -e "${YELLOW}After starting the stack, follow these steps:${NC}"
 echo ""
@@ -396,10 +393,15 @@ echo "3. Note the OpenID Configuration URL (well-known endpoint)"
 echo "4. Copy the Client ID and Client Secret"
 echo ""
 
-echo "Configure OpenID Provider URL (well-known configuration endpoint):"
-echo "Examples:"
-echo "  - Authentik: https://auth.yourdomain.com/application/o/open-webui/.well-known/openid-configuration"
-echo "  - Keycloak: https://keycloak.yourdomain.com/realms/myrealm/.well-known/openid-configuration"
+prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
+replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
+echo -e "${GREEN}✓${NC} OAuth Provider Name set"
+echo ""
+
+echo "Configure OpenID Provider URL (well-known configuration endpoint for Open WebUI):"
+echo "Examples based on your provider ($OAUTH_URL):"
+echo "  - Authentik: $OAUTH_URL/application/o/open-webui/.well-known/openid-configuration"
+echo "  - Keycloak: Include realm in base URL above"
 echo "  - Google: https://accounts.google.com/.well-known/openid-configuration"
 echo ""
 prompt_with_default "OpenID Provider URL" "" OPENID_URL
