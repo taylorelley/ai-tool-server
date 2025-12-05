@@ -6,14 +6,28 @@
 *.key
 
 # Docker volumes and data
-volumes/
-volumes/**/*
+volumes/db/data/
+volumes/langflow/
+volumes/open-webui/
+volumes/playwright/
+volumes/storage/
+
+# But keep required configuration and initialization files
+!volumes/db/*.sql
+!volumes/api/
+!volumes/api/**
+!volumes/functions/
+!volumes/functions/**
+!volumes/logs/
+!volumes/logs/**
+!volumes/pooler/
+!volumes/pooler/**
 
 # Backups
 backup-*/
 *.tar.gz
-*.sql
 *.dump
+backup*.sql
 
 # OS files
 .DS_Store
