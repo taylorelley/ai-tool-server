@@ -36,11 +36,11 @@ services:
       - LANGFLOW_LOG_LEVEL=${LANGFLOW_LOG_LEVEL:-INFO}
       - LANGFLOW_WORKERS=${LANGFLOW_WORKERS:-1}
       - LANGFLOW_AUTO_LOGIN=${LANGFLOW_AUTO_LOGIN:-false}
-      # External Authentik OIDC Integration (when supported)
-      - AUTH_AUTHENTIK_CLIENT_ID=${LANGFLOW_OAUTH_CLIENT_ID:-}
-      - AUTH_AUTHENTIK_CLIENT_SECRET=${LANGFLOW_OAUTH_CLIENT_SECRET:-}
-      - AUTH_AUTHENTIK_ISSUER=${AUTHENTIK_URL}/application/o/langflow
-      - AUTH_AUTHENTIK_ALLOW_ACCOUNT_LINKING=true
+      # External OAuth/OIDC Integration (when supported)
+      - AUTH_OAUTH_CLIENT_ID=${LANGFLOW_OAUTH_CLIENT_ID:-}
+      - AUTH_OAUTH_CLIENT_SECRET=${LANGFLOW_OAUTH_CLIENT_SECRET:-}
+      - AUTH_OAUTH_ISSUER=${OAUTH_PROVIDER_URL}/application/o/langflow
+      - AUTH_OAUTH_ALLOW_ACCOUNT_LINKING=true
       - NEXTAUTH_URL=${LANGFLOW_URL:-}
       # OpenAI Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -97,7 +97,8 @@ services:
     ports:
       - "${OPEN_WEBUI_PORT:-8080}:8080"
     environment:
-      # WebUI URL (MUST be set before enabling OAuth)
+      # Application Configuration
+      - WEBUI_NAME=${WEBUI_NAME:-Open WebUI}
       - WEBUI_URL=${OPEN_WEBUI_URL}
       # Ollama Configuration
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -108,11 +109,11 @@ services:
       # Authentication
       - WEBUI_AUTH=${WEBUI_AUTH:-true}
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
-      # External Authentik OAuth/OIDC Configuration
+      # External OAuth/OIDC Configuration
       - ENABLE_OAUTH_SIGNUP=${ENABLE_OAUTH_SIGNUP:-true}
       - OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true
-      - OAUTH_PROVIDER_NAME=Authentik
-      - OPENID_PROVIDER_URL=${AUTHENTIK_URL}/application/o/open-webui/.well-known/openid-configuration
+      - OAUTH_PROVIDER_NAME=${OAUTH_PROVIDER_NAME:-SSO}
+      - OPENID_PROVIDER_URL=${OAUTH_PROVIDER_URL}/application/o/open-webui/.well-known/openid-configuration
       - OAUTH_CLIENT_ID=${OPEN_WEBUI_OAUTH_CLIENT_ID:-}
       - OAUTH_CLIENT_SECRET=${OPEN_WEBUI_OAUTH_CLIENT_SECRET:-}
       - OAUTH_SCOPES=openid email profile
@@ -158,9 +159,7 @@ services:
       timeout: 10s
       interval: 5s
       retries: 3
-    depends_on:
-      analytics:
-        condition: service_healthy
+    depends_on: {}
     environment:
       HOSTNAME: "::"
       STUDIO_PG_META_URL: http://meta:8080
@@ -192,9 +191,7 @@ services:
       - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
-    depends_on:
-      analytics:
-        condition: service_healthy
+    depends_on: {}
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
@@ -229,8 +226,6 @@ services:
       retries: 3
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     environment:
       GOTRUE_API_HOST: 0.0.0.0
@@ -271,8 +266,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
@@ -291,8 +284,6 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     healthcheck:
       test:
@@ -400,8 +391,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     environment:
       PG_META_PORT: 8080
       PG_META_DB_HOST: ${POSTGRES_HOST}
@@ -419,9 +408,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./volumes/functions:/home/deno/functions:Z
-    depends_on:
-      analytics:
-        condition: service_healthy
+    depends_on: {}
     environment:
       JWT_SECRET: ${JWT_SECRET}
       SUPABASE_URL: http://kong:8000
@@ -437,6 +424,8 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:${LOGFLARE_VERSION:-1.26.13}
     restart: unless-stopped
+    profiles:
+      - analytics
     ports:
       - "${LOGFLARE_PORT:-4000}:4000"
     healthcheck:
@@ -561,8 +550,6 @@ services:
       retries: 5
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     environment:
       PORT: 4000

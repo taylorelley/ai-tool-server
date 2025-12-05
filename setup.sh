@@ -171,24 +171,30 @@ validate_port() {
     fi
 }
 
-echo -e "${BLUE}=== Step 1: External Authentik Configuration ===${NC}"
+echo -e "${BLUE}=== Step 1: External OAuth/OIDC Provider Configuration ===${NC}"
 echo ""
-echo "Enter the URL of your existing Authentik instance."
+echo "Enter the URL of your OAuth/OIDC provider (Authentik, Keycloak, Auth0, etc.)."
 echo "Examples:"
-echo "  - https://auth.yourdomain.com"
-echo "  - http://192.168.1.100:9000"
-echo "  - http://host.docker.internal:9000 (if Authentik on same Docker host)"
+echo "  - Authentik: https://auth.yourdomain.com"
+echo "  - Keycloak: https://keycloak.yourdomain.com/realms/myrealm"
+echo "  - Auth0: https://yourtenant.auth0.com"
+echo "  - Local: http://host.docker.internal:9000"
 echo ""
 while true; do
-    prompt_with_default "Authentik URL" "http://localhost:9000" AUTHENTIK_URL
-    if validate_url "$AUTHENTIK_URL"; then
-        replace_env_value "AUTHENTIK_URL" "$AUTHENTIK_URL"
-        echo -e "${GREEN}✓${NC} Authentik URL set"
+    prompt_with_default "OAuth Provider URL" "http://localhost:9000" OAUTH_URL
+    if validate_url "$OAUTH_URL"; then
+        replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
+        echo -e "${GREEN}✓${NC} OAuth Provider URL set"
         break
     else
         echo -e "${RED}✗ Invalid URL format. Please try again.${NC}"
     fi
 done
+
+echo ""
+prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
+replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
+echo -e "${GREEN}✓${NC} OAuth Provider Name set"
 echo ""
 
 echo -e "${BLUE}=== Step 2: Service URLs ===${NC}"
@@ -200,26 +206,26 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     PRODUCTION=true
     echo ""
     prompt_with_default "Your domain name" "yourdomain.com" DOMAIN
-    
+
     OPEN_WEBUI_URL="https://chat.${DOMAIN}"
     LANGFLOW_URL="https://flow.${DOMAIN}"
-    SUPABASE_PUBLIC_URL="https://api.${DOMAIN}"
-    API_EXTERNAL_URL="https://api.${DOMAIN}"
-    SITE_URL="https://studio.${DOMAIN}"
-    
+    SUPABASE_PUBLIC_URL="https://db.${DOMAIN}"
+    API_EXTERNAL_URL="https://db.${DOMAIN}"
+    SITE_URL="https://db.${DOMAIN}:3001"
+
     echo ""
     echo "Auto-configured URLs:"
-    echo "  Open WebUI:      $OPEN_WEBUI_URL"
-    echo "  Langflow:        $LANGFLOW_URL"
-    echo "  Supabase API:    $SUPABASE_PUBLIC_URL"
-    echo "  Studio:          $SITE_URL"
+    echo "  Open WebUI:       $OPEN_WEBUI_URL"
+    echo "  Langflow:         $LANGFLOW_URL"
+    echo "  Supabase API:     $SUPABASE_PUBLIC_URL"
+    echo "  Supabase Studio:  $SITE_URL"
     echo ""
-    
+
     if prompt_yes_no "Customize these URLs?" "n"; then
         prompt_with_default "Open WebUI URL" "$OPEN_WEBUI_URL" OPEN_WEBUI_URL
         prompt_with_default "Langflow URL" "$LANGFLOW_URL" LANGFLOW_URL
         prompt_with_default "Supabase API URL" "$SUPABASE_PUBLIC_URL" SUPABASE_PUBLIC_URL
-        prompt_with_default "Studio URL" "$SITE_URL" SITE_URL
+        prompt_with_default "Supabase Studio URL" "$SITE_URL" SITE_URL
         API_EXTERNAL_URL="$SUPABASE_PUBLIC_URL"
     fi
 else
@@ -383,20 +389,20 @@ replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
 echo -e "  12. ${GREEN}✓${NC} Secret Key Base"
 echo ""
 
-echo -e "${BLUE}=== Step 6: Authentik OAuth Configuration ===${NC}"
+echo -e "${BLUE}=== Step 6: OAuth/OIDC Configuration ===${NC}"
 echo ""
-echo "You need to configure OAuth providers in your Authentik instance."
+echo "You need to configure OAuth providers in your OAuth/OIDC provider."
 echo ""
 echo -e "${YELLOW}After starting the stack, follow these steps:${NC}"
 echo ""
-echo "1. Log into Authentik: $AUTHENTIK_URL"
-echo "2. Go to Admin Interface > Applications > Providers"
-echo "3. Create OAuth2/OpenID Provider for Open WebUI:"
+echo "1. Log into your OAuth provider: $OAUTH_URL"
+echo "2. Create an OAuth2/OpenID Provider for Open WebUI:"
 echo "   - Redirect URI: ${OPEN_WEBUI_URL}/oauth/oidc/callback"
-echo "4. Copy the Client ID and Client Secret"
+echo "   - Scopes: openid, email, profile"
+echo "3. Copy the Client ID and Client Secret"
 echo ""
 
-if prompt_yes_no "Do you already have OAuth credentials from Authentik?" "n"; then
+if prompt_yes_no "Do you already have OAuth credentials?" "n"; then
     echo ""
     prompt_with_default "Open WebUI OAuth Client ID" "" OPEN_WEBUI_CLIENT_ID
     
@@ -438,6 +444,15 @@ if prompt_yes_no "Enable OAuth signup for new users?" "y"; then
 else
     replace_env_value "ENABLE_OAUTH_SIGNUP" "false"
     echo -e "${YELLOW}⚠️${NC} OAuth signup disabled"
+fi
+echo ""
+
+if prompt_yes_no "Customize Open WebUI application name?" "n"; then
+    prompt_with_default "Application Name" "Open WebUI" WEBUI_NAME
+    replace_env_value "WEBUI_NAME" "$WEBUI_NAME"
+    echo -e "${GREEN}✓${NC} Application name set to: $WEBUI_NAME"
+else
+    replace_env_value "WEBUI_NAME" "Open WebUI"
 fi
 echo ""
 

@@ -20,7 +20,7 @@ This stack integrates AI development tools with Supabase as the backend storage 
 - **Kong** - API gateway (port 8000)
 - **Studio** - Database management UI (port 3001)
 - **Edge Functions** - Serverless functions
-- **Analytics** - Logging & monitoring
+- **Analytics** - Logging & monitoring (optional, disabled by default)
 
 ### Key Integration Points
 - **Langflow → Supabase PostgreSQL**: Direct database access for storing flow data, chat history, embeddings
@@ -105,9 +105,13 @@ Edit `.env` and update:
 
 ```bash
 # For production deployment
-SUPABASE_PUBLIC_URL=https://api.your-domain.com
-API_EXTERNAL_URL=https://api.your-domain.com
-SITE_URL=https://studio.your-domain.com
+SUPABASE_PUBLIC_URL=https://db.your-domain.com
+API_EXTERNAL_URL=https://db.your-domain.com
+SITE_URL=https://db.your-domain.com:3001
+
+# OAuth Provider Configuration
+OAUTH_PROVIDER_URL=https://auth.your-domain.com
+OAUTH_PROVIDER_NAME=SSO
 
 # If using Ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
@@ -143,12 +147,17 @@ This validates:
 # Start all services
 docker compose up -d
 
+# Optional: Enable Supabase Analytics for production monitoring
+# docker compose --profile analytics up -d
+
 # View logs
 docker compose logs -f
 
 # Check service health
 docker compose ps
 ```
+
+**Note:** Analytics is disabled by default to reduce resource usage. Enable it in production environments for logging and monitoring.
 
 ### 6. Access Services
 
@@ -343,8 +352,8 @@ docker compose restart open-webui
 # Check all Supabase dependencies
 docker compose ps | grep supabase
 
-# Verify analytics service (required dependency)
-docker compose logs analytics
+# Check Studio logs
+docker compose logs supabase-studio
 
 # Restart Studio
 docker compose restart supabase-studio
