@@ -119,8 +119,8 @@ services:
       - OPENID_REDIRECT_URI=${OPEN_WEBUI_URL}/oauth/oidc/callback
       # Optional: Disable local login if using SSO only
       - ENABLE_LOGIN_FORM=${ENABLE_LOCAL_LOGIN:-true}
-      # Database (uses SQLite by default, can use Supabase PostgreSQL)
-      - DATABASE_URL=${OPEN_WEBUI_DATABASE_URL:-}
+      # Database: Uses SQLite by default
+      # To use PostgreSQL, add DATABASE_URL in docker-compose.override.yml
       # Supabase Integration (optional - for custom integrations)
       - SUPABASE_URL=${SUPABASE_URL:-http://kong:8000}
       - SUPABASE_ANON_KEY=${ANON_KEY:-}
