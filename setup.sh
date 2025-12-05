@@ -243,53 +243,63 @@ replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
 echo ""
 
-echo -e "${BLUE}=== Step 3: AI Model Backend ===${NC}"
+echo -e "${BLUE}=== Step 3: AI Model Backend Configuration ===${NC}"
 echo ""
-echo "Which AI backend will you use?"
-echo "  1) Ollama (local)"
-echo "  2) OpenAI API"
-echo "  3) Both"
-echo "  4) Neither (configure later)"
+echo "Configure AI providers (you can configure multiple):"
 echo ""
-read -p "Select [1-4]: " AI_BACKEND
 
-case $AI_BACKEND in
-    1)
-        echo ""
-        prompt_with_default "Ollama URL" "http://host.docker.internal:11434" OLLAMA_URL
-        replace_env_value "OLLAMA_BASE_URL" "$OLLAMA_URL"
-        echo -e "${GREEN}✓${NC} Ollama configured"
-        ;;
-    2)
-        echo ""
-        echo "Enter your OpenAI API key (starts with sk-):"
-        read -s OPENAI_KEY
-        echo ""
-        if [ -n "$OPENAI_KEY" ]; then
-            replace_env_value "OPENAI_API_KEY" "$OPENAI_KEY"
-            echo -e "${GREEN}✓${NC} OpenAI API key configured"
-        else
-            echo -e "${YELLOW}⚠️  No API key entered${NC}"
-        fi
-        ;;
-    3)
-        echo ""
-        prompt_with_default "Ollama URL" "http://host.docker.internal:11434" OLLAMA_URL
-        replace_env_value "OLLAMA_BASE_URL" "$OLLAMA_URL"
-        
-        echo ""
-        echo "Enter your OpenAI API key (starts with sk-):"
-        read -s OPENAI_KEY
-        echo ""
-        if [ -n "$OPENAI_KEY" ]; then
-            replace_env_value "OPENAI_API_KEY" "$OPENAI_KEY"
-            echo -e "${GREEN}✓${NC} Both backends configured"
-        fi
-        ;;
-    *)
-        echo -e "${YELLOW}⚠️  Skipping AI backend configuration${NC}"
-        ;;
-esac
+# Ollama
+if prompt_yes_no "Configure Ollama (local)?" "n"; then
+    echo ""
+    prompt_with_default "Ollama URL" "http://host.docker.internal:11434" OLLAMA_URL
+    replace_env_value "OLLAMA_BASE_URL" "$OLLAMA_URL"
+    echo -e "${GREEN}✓${NC} Ollama configured"
+fi
+echo ""
+
+# OpenAI
+if prompt_yes_no "Configure OpenAI?" "n"; then
+    echo ""
+    echo "Enter your OpenAI API key (starts with sk-):"
+    read -s OPENAI_KEY
+    echo ""
+    if [ -n "$OPENAI_KEY" ]; then
+        replace_env_value "OPENAI_API_KEY" "$OPENAI_KEY"
+        echo -e "${GREEN}✓${NC} OpenAI configured"
+    else
+        echo -e "${YELLOW}⚠️  No API key entered${NC}"
+    fi
+fi
+echo ""
+
+# Anthropic
+if prompt_yes_no "Configure Anthropic?" "n"; then
+    echo ""
+    echo "Enter your Anthropic API key (starts with sk-ant-):"
+    read -s ANTHROPIC_KEY
+    echo ""
+    if [ -n "$ANTHROPIC_KEY" ]; then
+        replace_env_value "ANTHROPIC_API_KEY" "$ANTHROPIC_KEY"
+        echo -e "${GREEN}✓${NC} Anthropic configured"
+    else
+        echo -e "${YELLOW}⚠️  No API key entered${NC}"
+    fi
+fi
+echo ""
+
+# OpenRouter
+if prompt_yes_no "Configure OpenRouter?" "n"; then
+    echo ""
+    echo "Enter your OpenRouter API key (starts with sk-or-):"
+    read -s OPENROUTER_KEY
+    echo ""
+    if [ -n "$OPENROUTER_KEY" ]; then
+        replace_env_value "OPENROUTER_API_KEY" "$OPENROUTER_KEY"
+        echo -e "${GREEN}✓${NC} OpenRouter configured"
+    else
+        echo -e "${YELLOW}⚠️  No API key entered${NC}"
+    fi
+fi
 echo ""
 
 echo -e "${BLUE}=== Step 4: SMTP Configuration (Optional) ===${NC}"

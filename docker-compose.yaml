@@ -42,10 +42,12 @@ services:
       - AUTH_OAUTH_ISSUER=${OAUTH_PROVIDER_URL}/application/o/langflow
       - AUTH_OAUTH_ALLOW_ACCOUNT_LINKING=true
       - NEXTAUTH_URL=${LANGFLOW_URL:-}
-      # OpenAI Configuration
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # Ollama Configuration
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # AI Provider API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       # Supabase Integration - Direct access to services
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
@@ -102,8 +104,10 @@ services:
       - WEBUI_URL=${OPEN_WEBUI_URL}
       # Ollama Configuration
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      # OpenAI Configuration
+      # AI Provider API Keys
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       # Playwright Integration
       - PLAYWRIGHT_SERVICE_URL=http://playwright:3000
       # Authentication

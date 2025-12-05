@@ -36,7 +36,7 @@ This stack integrates AI development tools with Supabase as the backend storage 
 - 4GB+ RAM recommended
 - `openssl` command (for generating secrets)
 - `curl` command (for downloading files)
-- (Optional) Ollama running locally for LLM inference
+- (Optional) AI provider: Ollama (local), OpenAI, Anthropic, or OpenRouter
 
 ## 🚀 Quick Start
 
@@ -113,11 +113,11 @@ SITE_URL=https://db.your-domain.com:3001
 OAUTH_PROVIDER_URL=https://auth.your-domain.com
 OAUTH_PROVIDER_NAME=SSO
 
-# If using Ollama
+# AI Provider Configuration (configure one or more)
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-
-# If using OpenAI
 OPENAI_API_KEY=sk-your-openai-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+OPENROUTER_API_KEY=sk-or-your-openrouter-key
 
 # SMTP for email (if needed)
 SMTP_HOST=smtp.gmail.com
@@ -180,6 +180,18 @@ docker compose ps
 
 1. Set `OPENAI_API_KEY` in `.env`
 2. Both Langflow and Open WebUI will use this key
+
+### Using with Anthropic
+
+1. Get your API key from [console.anthropic.com](https://console.anthropic.com/)
+2. Set `ANTHROPIC_API_KEY` in `.env`
+3. Both Langflow and Open WebUI will use this key
+
+### Using with OpenRouter
+
+1. Get your API key from [openrouter.ai](https://openrouter.ai/)
+2. Set `OPENROUTER_API_KEY` in `.env`
+3. Configure models in Open WebUI or Langflow using OpenRouter endpoints
 
 ### Network Architecture
 
