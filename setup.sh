@@ -9,21 +9,85 @@
 
 set -e
 
-# Colors for output
+# Enhanced color palette
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+GRAY='\033[0;90m'
+NC='\033[0m'
 
-echo -e "${BLUE}=============================================="
-echo "AI Tool Server Stack"
-echo "Interactive Setup"
-echo -e "==============================================${NC}"
+# Text formatting
+BOLD='\033[1m'
+DIM='\033[2m'
+UNDERLINE='\033[4m'
+
+# Box drawing characters
+BOX_H="━"
+BOX_V="┃"
+BOX_TL="┏"
+BOX_TR="┓"
+BOX_BL="┗"
+BOX_BR="┛"
+BOX_VR="┣"
+BOX_VL="┫"
+BOX_HU="┻"
+BOX_HD="┳"
+
+# Progress tracking
+TOTAL_STEPS=7
+CURRENT_STEP=0
+
+# Clear screen and show header
+clear
+echo ""
+echo -e "${CYAN}${BOX_TL}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_TR}${NC}"
+echo -e "${CYAN}${BOX_V}${NC}                                                           ${CYAN}${BOX_V}${NC}"
+echo -e "${CYAN}${BOX_V}${NC}     ${WHITE}${BOLD}🚀 AI Tool Server Stack - Interactive Setup${NC}      ${CYAN}${BOX_V}${NC}"
+echo -e "${CYAN}${BOX_V}${NC}                                                           ${CYAN}${BOX_V}${NC}"
+echo -e "${CYAN}${BOX_V}${NC}     ${DIM}Langflow • Open WebUI • Supabase • Meilisearch${NC}     ${CYAN}${BOX_V}${NC}"
+echo -e "${CYAN}${BOX_V}${NC}                                                           ${CYAN}${BOX_V}${NC}"
+echo -e "${CYAN}${BOX_BL}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_BR}${NC}"
 echo ""
 
+# TUI Helper Functions
+print_step_header() {
+    local step_num=$1
+    local step_title=$2
+    CURRENT_STEP=$step_num
+
+    echo ""
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC} ${BOLD}Step ${step_num}/${TOTAL_STEPS}:${NC} ${WHITE}${step_title}${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+print_info() {
+    echo -e "${BLUE}ℹ${NC}  $1"
+}
+
+print_success() {
+    echo -e "${GREEN}✓${NC}  $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠${NC}  $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC}  $1"
+}
+
+print_separator() {
+    echo -e "${GRAY}─────────────────────────────────────────────────────────────${NC}"
+}
+
 # Pre-flight checks
-echo -e "${BLUE}Running pre-flight checks...${NC}"
+echo -e "${MAGENTA}${BOX_TL}${BOX_H}${BOX_H}${BOX_H} Pre-flight Checks ${BOX_H}${BOX_H}${BOX_H}${BOX_TR}${NC}"
 echo ""
 
 # Check for required commands
@@ -31,34 +95,37 @@ MISSING_COMMANDS=()
 for cmd in openssl curl docker; do
     if ! command -v $cmd &> /dev/null; then
         MISSING_COMMANDS+=("$cmd")
+        print_error "$cmd not found"
+    else
+        print_success "$cmd found"
     fi
 done
 
 if [ ${#MISSING_COMMANDS[@]} -gt 0 ]; then
-    echo -e "${RED}✗ Error: The following required commands are missing:${NC}"
-    for cmd in "${MISSING_COMMANDS[@]}"; do
-        echo "  - $cmd"
-    done
+    echo ""
+    print_error "Missing required dependencies"
     echo ""
     echo "Please install the missing dependencies and try again."
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} All required commands found (openssl, curl, docker)"
-
 # Check Docker is running
-if ! docker info &> /dev/null; then
-    echo -e "${RED}✗ Error: Docker is not running${NC}"
+if ! docker info &> /dev/null 2>&1; then
+    print_error "Docker is not running"
+    echo ""
     echo "Please start Docker and try again."
     exit 1
+else
+    print_success "Docker is running"
 fi
 
-echo -e "${GREEN}✓${NC} Docker is running"
+echo ""
+print_separator
 echo ""
 
 # Check if .env already exists
 if [ -f .env ]; then
-    echo -e "${YELLOW}⚠️  .env file already exists!${NC}"
+    print_warning ".env file already exists!"
     read -p "Overwrite? This will backup the existing file. (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -66,22 +133,22 @@ if [ -f .env ]; then
         exit 0
     fi
     backup_file=".env.backup.$(date +%Y%m%d_%H%M%S)"
-    echo -e "${GREEN}✓${NC} Backing up existing .env to $backup_file"
+    print_success "Backing up existing .env to $backup_file"
     cp .env "$backup_file"
 fi
 
 # Check if .env.template exists
 if [ ! -f .env.template ]; then
-    echo -e "${RED}✗ Error: .env.template not found!${NC}"
+    print_error "Error: .env.template not found!"
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} Copying .env.template to .env..."
+print_success "Copying .env.template to .env..."
 cp .env.template .env
 echo ""
 
 # Create required volume directories
-echo -e "${BLUE}Creating required volume directories...${NC}"
+print_info "Creating required volume directories..."
 mkdir -p volumes/langflow/data volumes/langflow/db
 mkdir -p volumes/open-webui/data volumes/open-webui/tools
 mkdir -p volumes/playwright
@@ -92,7 +159,7 @@ mkdir -p volumes/db volumes/api volumes/functions volumes/logs volumes/pooler vo
 # Langflow container runs as non-root user and needs write access
 chmod -R 777 volumes/langflow/data
 
-echo -e "${GREEN}✓${NC} Volume directories created"
+print_success "Volume directories created"
 echo ""
 
 # Function to generate a random secret (alphanumeric only for safety)
@@ -186,10 +253,10 @@ validate_port() {
     fi
 }
 
-echo -e "${BLUE}=== Step 1: OAuth/OIDC Configuration (Optional) ===${NC}"
-echo ""
-echo "Configure Single Sign-On (SSO) with OAuth/OIDC providers"
-echo "(Authentik, Keycloak, Google, Azure AD, etc.)"
+print_step_header 1 "OAuth/OIDC Configuration (Optional)"
+
+print_info "Configure Single Sign-On (SSO) with OAuth/OIDC providers"
+echo "  (Authentik, Keycloak, Google, Azure AD, etc.)"
 echo ""
 
 OAUTH_CONFIGURED=false
@@ -203,7 +270,7 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
             replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
             break
         else
-            echo -e "${RED}✗ Invalid URL format${NC}"
+            print_error "Invalid URL format"
         fi
     done
 
@@ -239,15 +306,15 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     replace_env_value "OAUTH_SCOPES" "openid email profile"
     replace_env_value "ENABLE_PASSWORD_AUTH" "true"
 
-    echo -e "${GREEN}✓${NC} OAuth/OIDC configured"
+    print_success "OAuth/OIDC configured"
 else
-    echo -e "${BLUE}ℹ${NC}  Skipping OAuth configuration - local authentication only"
+    print_info "Skipping OAuth configuration - local authentication only"
 fi
 echo ""
 
-echo -e "${BLUE}=== Step 2: Service URLs ===${NC}"
-echo ""
-echo "Configure URLs for your services (for OAuth callbacks and production)."
+print_step_header 2 "Service URLs"
+
+print_info "Configure URLs for your services (for OAuth callbacks and production)"
 echo ""
 
 if prompt_yes_no "Is this a production deployment?" "n"; then
@@ -283,8 +350,8 @@ else
     SUPABASE_PUBLIC_URL="http://localhost:8000"
     API_EXTERNAL_URL="http://localhost:8000"
     SITE_URL="http://localhost:3001"
-    
-    echo -e "${GREEN}✓${NC} Using localhost URLs for development"
+
+    print_success "Using localhost URLs for development"
 fi
 
 replace_env_value "OPEN_WEBUI_URL" "$OPEN_WEBUI_URL"
@@ -294,9 +361,9 @@ replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
 echo ""
 
-echo -e "${BLUE}=== Step 3: AI Model Backend Configuration ===${NC}"
-echo ""
-echo "Configure AI providers (you can configure multiple):"
+print_step_header 3 "AI Model Backend Configuration"
+
+print_info "Configure AI providers (you can configure multiple)"
 echo ""
 
 # Ollama
@@ -304,7 +371,7 @@ if prompt_yes_no "Configure Ollama (local)?" "n"; then
     echo ""
     prompt_with_default "Ollama URL" "http://host.docker.internal:11434" OLLAMA_URL
     replace_env_value "OLLAMA_BASE_URL" "$OLLAMA_URL"
-    echo -e "${GREEN}✓${NC} Ollama configured"
+    print_success "Ollama configured"
 fi
 echo ""
 
@@ -316,9 +383,9 @@ if prompt_yes_no "Configure OpenAI?" "n"; then
     echo ""
     if [ -n "$OPENAI_KEY" ]; then
         replace_env_value "OPENAI_API_KEY" "$OPENAI_KEY"
-        echo -e "${GREEN}✓${NC} OpenAI configured"
+        print_success "OpenAI configured"
     else
-        echo -e "${YELLOW}⚠️  No API key entered${NC}"
+        print_warning "No API key entered"
     fi
 fi
 echo ""
@@ -331,9 +398,9 @@ if prompt_yes_no "Configure Anthropic?" "n"; then
     echo ""
     if [ -n "$ANTHROPIC_KEY" ]; then
         replace_env_value "ANTHROPIC_API_KEY" "$ANTHROPIC_KEY"
-        echo -e "${GREEN}✓${NC} Anthropic configured"
+        print_success "Anthropic configured"
     else
-        echo -e "${YELLOW}⚠️  No API key entered${NC}"
+        print_warning "No API key entered"
     fi
 fi
 echo ""
@@ -346,15 +413,15 @@ if prompt_yes_no "Configure OpenRouter?" "n"; then
     echo ""
     if [ -n "$OPENROUTER_KEY" ]; then
         replace_env_value "OPENROUTER_API_KEY" "$OPENROUTER_KEY"
-        echo -e "${GREEN}✓${NC} OpenRouter configured"
+        print_success "OpenRouter configured"
     else
-        echo -e "${YELLOW}⚠️  No API key entered${NC}"
+        print_warning "No API key entered"
     fi
 fi
 echo ""
 
-echo -e "${BLUE}=== Step 4: SMTP Configuration (Optional) ===${NC}"
-echo ""
+print_step_header 4 "SMTP Configuration (Optional)"
+
 if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
     echo ""
     prompt_with_default "SMTP Host" "smtp.gmail.com" SMTP_HOST
@@ -364,7 +431,7 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
         if validate_port "$SMTP_PORT"; then
             break
         else
-            echo -e "${RED}✗ Invalid port number. Please enter a number between 1-65535.${NC}"
+            print_error "Invalid port number. Please enter a number between 1-65535"
         fi
     done
 
@@ -379,18 +446,18 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
         if validate_email "$SMTP_ADMIN_EMAIL"; then
             break
         else
-            echo -e "${RED}✗ Invalid email format. Please try again.${NC}"
+            print_error "Invalid email format. Please try again"
         fi
     done
 
     prompt_with_default "From Name" "AI Tool Server" SMTP_SENDER_NAME
-    
+
     if prompt_yes_no "Use TLS?" "y"; then
         SMTP_USE_TLS="true"
     else
         SMTP_USE_TLS="false"
     fi
-    
+
     replace_env_value "SMTP_HOST" "$SMTP_HOST"
     replace_env_value "SMTP_PORT" "$SMTP_PORT"
     replace_env_value "SMTP_USER" "$SMTP_USER"
@@ -398,16 +465,16 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
     replace_env_value "SMTP_ADMIN_EMAIL" "$SMTP_ADMIN_EMAIL"
     replace_env_value "SMTP_SENDER_NAME" "$SMTP_SENDER_NAME"
     replace_env_value "SMTP_USE_TLS" "$SMTP_USE_TLS"
-    
-    echo -e "${GREEN}✓${NC} SMTP configured"
+
+    print_success "SMTP configured"
 else
-    echo -e "${YELLOW}⚠️  Skipping SMTP configuration${NC}"
+    print_info "Skipping SMTP configuration"
 fi
 echo ""
 
-echo -e "${BLUE}=== Step 5: Generating Secure Secrets ===${NC}"
-echo ""
-echo "Generating 13 cryptographically secure secrets..."
+print_step_header 5 "Generating Secure Secrets"
+
+print_info "Generating 13 cryptographically secure secrets..."
 echo ""
 
 secrets=(
@@ -435,7 +502,7 @@ for secret_pair in "${secrets[@]}"; do
 done
 
 echo ""
-echo "Generating SECRET_KEY_BASE (64 chars)..."
+print_info "Generating SECRET_KEY_BASE (64 chars)..."
 SECRET_KEY_BASE=$(generate_long_secret 64)
 replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
 echo -e "  13. ${GREEN}✓${NC} Secret Key Base"
@@ -444,29 +511,29 @@ echo ""
 # Set default app name
 replace_env_value "WEBUI_NAME" "Open WebUI"
 
-echo -e "${BLUE}=== Step 6: Meilisearch Configuration ===${NC}"
-echo ""
-echo "Meilisearch provides fast search for indexed documentation."
-echo "Scrapix can automatically scrape and index websites into Meilisearch."
+print_step_header 6 "Meilisearch Configuration"
+
+print_info "Meilisearch provides fast search for indexed documentation"
+echo "  Scrapix can automatically scrape and index websites into Meilisearch"
 echo ""
 
 if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
     echo ""
-    echo "Meilisearch Master Key has been generated automatically."
+    print_success "Meilisearch Master Key has been generated automatically"
     echo ""
 
     if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
         echo ""
-        echo "Creating scrapix.config.json from template..."
+        print_info "Creating scrapix.config.json from template..."
 
         # Check if config already exists
         if [ -f scrapix.config.json ]; then
-            echo -e "${YELLOW}⚠️  scrapix.config.json already exists${NC}"
+            print_warning "scrapix.config.json already exists"
         else
             # Create config from template, replacing the placeholder
             sed "s/\${MEILI_MASTER_KEY}/$(grep MEILI_MASTER_KEY .env | cut -d '=' -f2)/g" \
                 scrapix.config.json.template > scrapix.config.json
-            echo -e "${GREEN}✓${NC} Created scrapix.config.json"
+            print_success "Created scrapix.config.json"
             echo ""
             echo "Default indexed sites:"
             echo "  • Open WebUI docs"
@@ -474,30 +541,30 @@ if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
             echo "  • OpenAI docs"
             echo "  • Meilisearch docs"
             echo ""
-            echo "Edit scrapix.config.json to customize the list of sites to index."
+            print_info "Edit scrapix.config.json to customize the list of sites to index"
         fi
     fi
 
     echo ""
-    echo -e "${GREEN}✓${NC} Meilisearch configured"
+    print_success "Meilisearch configured"
     echo "   Access Meilisearch at http://localhost:7700"
     echo "   Run 'docker compose run scrapix' to index documentation"
     echo ""
-    echo -e "${BLUE}ℹ  To use Meilisearch in Open WebUI:${NC}"
+    print_info "To use Meilisearch in Open WebUI:"
     echo "   1. Start the stack: docker compose up -d"
     echo "   2. Import the tool: Admin Panel → Tools → Import Tool"
     echo "   3. Upload: volumes/open-webui/tools/meilisearch_search.py"
     echo "   4. The tool will auto-configure from environment variables"
     MEILISEARCH_CONFIGURED=true
 else
-    echo -e "${YELLOW}⚠️${NC} Skipping Meilisearch configuration"
+    print_info "Skipping Meilisearch configuration"
     MEILISEARCH_CONFIGURED=false
 fi
 echo ""
 
-echo -e "${BLUE}=== Step 7: Generating Configuration ===${NC}"
-echo ""
-echo "Creating docker-compose.override.yml..."
+print_step_header 7 "Generating Configuration"
+
+print_info "Creating docker-compose.override.yml..."
 echo ""
 
 # Build override file content
@@ -507,17 +574,17 @@ OVERRIDE_CONTENT+="services:\n"
 
 # Check if override file already exists
 if [ -f docker-compose.override.yml ]; then
-    echo -e "${YELLOW}⚠️  docker-compose.override.yml already exists!${NC}"
+    print_warning "docker-compose.override.yml already exists!"
     read -p "Overwrite? This will backup the existing file. (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         backup_file="docker-compose.override.yml.backup.$(date +%Y%m%d_%H%M%S)"
-        echo -e "${GREEN}✓${NC} Backing up to $backup_file"
+        print_success "Backing up to $backup_file"
         cp docker-compose.override.yml "$backup_file"
     else
-        echo -e "${YELLOW}⚠️  Skipping override file creation${NC}"
+        print_warning "Skipping override file creation"
         echo ""
-        echo -e "${BLUE}ℹ${NC}  Continuing with existing docker-compose.override.yml"
+        print_info "Continuing with existing docker-compose.override.yml"
         echo ""
         chmod 600 .env
         # Jump to completion section
@@ -600,14 +667,14 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     # PostgreSQL option
     if prompt_yes_no "Use PostgreSQL for Open WebUI instead of SQLite?" "n"; then
         OVERRIDE_CONTENT+="      - DATABASE_URL=postgresql://postgres:\${POSTGRES_PASSWORD}@db:5432/postgres\n"
-        echo -e "${GREEN}✓${NC} PostgreSQL database configured"
+        print_success "PostgreSQL database configured"
     else
-        echo -e "${BLUE}ℹ${NC}  Using SQLite (default)"
+        print_info "Using SQLite (default)"
     fi
 
     # Write the override file
     echo -e "$OVERRIDE_CONTENT" > docker-compose.override.yml
-    echo -e "${GREEN}✓${NC} Created docker-compose.override.yml"
+    print_success "Created docker-compose.override.yml"
     echo "   Optional configurations will be applied on 'docker compose up'"
 fi
 echo ""
@@ -615,9 +682,12 @@ echo ""
 # Set proper permissions
 chmod 600 .env
 
-echo -e "${GREEN}=============================================="
-echo "✓ Setup Complete!"
-echo -e "==============================================${NC}"
+echo ""
+print_separator
+echo ""
+echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}${BOLD}║                    ✓ Setup Complete!                     ║${NC}"
+echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo "Your .env file has been created with:"
 echo "  • 12 secure secrets (auto-generated)"
@@ -633,22 +703,22 @@ if [ -f docker-compose.override.yml ] && [ "$SKIP_OVERRIDE" != true ]; then
     echo "  • docker-compose.override.yml created with optional configs"
 fi
 echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}NEXT STEPS:${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+print_separator
 echo ""
-echo "1. Download required Supabase files:"
+echo -e "${CYAN}${BOLD}NEXT STEPS${NC}"
+echo ""
+echo -e "${WHITE}1.${NC} Download required Supabase files:"
 echo "   See README.md 'Create Required Supabase Files' section"
 echo ""
-echo "2. Start the stack:"
-echo "   docker compose up -d"
+echo -e "${WHITE}2.${NC} Start the stack:"
+echo -e "   ${DIM}docker compose up -d${NC}"
 echo ""
 if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-    echo "3. Index documentation (optional):"
-    echo "   docker compose run scrapix"
+    echo -e "${WHITE}3.${NC} Index documentation (optional):"
+    echo -e "   ${DIM}docker compose run scrapix${NC}"
     echo ""
 fi
-echo "$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3"). Access services:"
+echo -e "${WHITE}$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3").${NC} Access services:"
 echo "   • Open WebUI:      $OPEN_WEBUI_URL"
 echo "   • Langflow:        $LANGFLOW_URL"
 echo "   • Supabase Studio: $SITE_URL"
@@ -660,13 +730,13 @@ if [ "$OAUTH_CONFIGURED" = true ]; then
     echo "   • OAuth Provider:  $OAUTH_URL"
 fi
 echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+print_separator
 echo ""
-echo "📚 Documentation:"
+echo -e "${MAGENTA}📚 Documentation${NC}"
 echo "   • Full guide:        README.md"
 echo "   • Authentik setup:   EXTERNAL_AUTHENTIK_SETUP.md"
 echo "   • Quick reference:   QUICK_REFERENCE.md"
 echo "   • Troubleshooting:   TROUBLESHOOTING.md"
 echo ""
-echo -e "${GREEN}✓ .env file permissions set to 600 (secure)${NC}"
+print_success ".env file permissions set to 600 (secure)"
 echo ""
