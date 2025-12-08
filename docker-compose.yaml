@@ -387,8 +387,6 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:${LOGFLARE_VERSION:-1.26.13}
     restart: unless-stopped
-    profiles:
-      - analytics
     ports:
       - "${LOGFLARE_PORT:-4000}:4000"
     healthcheck:

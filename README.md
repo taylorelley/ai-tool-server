@@ -20,7 +20,7 @@ This stack integrates AI development tools with Supabase as the backend storage 
 - **Kong** - API gateway (port 8000)
 - **Studio** - Database management UI (port 3001)
 - **Edge Functions** - Serverless functions
-- **Analytics** - Logging & monitoring (optional, disabled by default)
+- **Analytics** - Logging & monitoring
 
 ### Key Integration Points
 - **Langflow → Supabase PostgreSQL**: Direct database access for storing flow data, chat history, embeddings
@@ -147,17 +147,12 @@ This validates:
 # Start all services
 docker compose up -d
 
-# Optional: Enable Supabase Analytics for production monitoring
-# docker compose --profile analytics up -d
-
 # View logs
 docker compose logs -f
 
 # Check service health
 docker compose ps
 ```
-
-**Note:** Analytics is disabled by default to reduce resource usage. Enable it in production environments for logging and monitoring.
 
 ### 6. Access Services
 
