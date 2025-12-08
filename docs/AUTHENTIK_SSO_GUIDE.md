@@ -230,7 +230,7 @@ location /outpost.goauthentik.io {
 AUTHENTIK_ISSUER_URL=https://auth.yourdomain.com
 OPEN_WEBUI_URL=https://chat.yourdomain.com
 LANGFLOW_URL=https://flow.yourdomain.com
-SUPABASE_PUBLIC_URL=https://api.yourdomain.com
+SUPABASE_PUBLIC_URL=https://db-api.yourdomain.com
 
 # Update OAuth Redirect URIs in Authentik
 # Open WebUI: https://chat.yourdomain.com/oauth/oidc/callback

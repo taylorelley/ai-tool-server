@@ -738,8 +738,8 @@ server {
 # Supabase API
 server {
     listen 80;
-    server_name api.yourdomain.com;
-    
+    server_name db-api.yourdomain.com;
+
     location / {
         proxy_pass http://localhost:8000;
         proxy_set_header Host $host;
@@ -752,7 +752,7 @@ server {
 # Supabase Studio
 server {
     listen 80;
-    server_name studio.yourdomain.com;
+    server_name db-admin.yourdomain.com;
 
     location / {
         proxy_pass http://localhost:3001;
@@ -787,8 +787,9 @@ sudo apt install certbot python3-certbot-nginx
 # Obtain certificates
 sudo certbot --nginx -d langflow.yourdomain.com
 sudo certbot --nginx -d chat.yourdomain.com
-sudo certbot --nginx -d api.yourdomain.com
-sudo certbot --nginx -d studio.yourdomain.com
+sudo certbot --nginx -d db-api.yourdomain.com
+sudo certbot --nginx -d db-admin.yourdomain.com
+sudo certbot --nginx -d search.yourdomain.com
 
 # Auto-renewal (already configured by certbot)
 sudo certbot renew --dry-run
@@ -800,9 +801,9 @@ Update `.env` for production:
 
 ```bash
 # Use production domains
-SUPABASE_PUBLIC_URL=https://api.yourdomain.com
-API_EXTERNAL_URL=https://api.yourdomain.com
-SITE_URL=https://studio.yourdomain.com
+SUPABASE_PUBLIC_URL=https://db-api.yourdomain.com
+API_EXTERNAL_URL=https://db-api.yourdomain.com
+SITE_URL=https://db-admin.yourdomain.com
 
 # Disable auto-login for security
 LANGFLOW_AUTO_LOGIN=false
