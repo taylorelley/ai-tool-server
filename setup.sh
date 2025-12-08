@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ############################################################
-# AI Tool Server Stack with External Authentik SSO
-# Interactive Setup Script
+# AI Tool Server Stack - Interactive Setup Script
 ############################################################
-# This script creates a production-ready .env file
+# Configures: Langflow, Open WebUI, Supabase, Meilisearch
+# Optional: OAuth/OIDC SSO, AI Providers, SMTP
 ############################################################
 
 set -e
@@ -17,8 +17,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}=============================================="
-echo "AI Tool Server Stack - Interactive Setup"
-echo "with External Authentik SSO Integration"
+echo "AI Tool Server Stack"
+echo "Interactive Setup"
 echo -e "==============================================${NC}"
 echo ""
 
@@ -186,27 +186,63 @@ validate_port() {
     fi
 }
 
-echo -e "${BLUE}=== Step 1: OAuth/OIDC Provider Base URL ===${NC}"
+echo -e "${BLUE}=== Step 1: OAuth/OIDC Configuration (Optional) ===${NC}"
 echo ""
-echo "Enter the BASE URL of your OAuth/OIDC provider."
-echo "This will be used for Langflow OAuth integration."
+echo "Configure Single Sign-On (SSO) with OAuth/OIDC providers"
+echo "(Authentik, Keycloak, Google, Azure AD, etc.)"
 echo ""
-echo "Examples:"
-echo "  - Authentik: https://auth.yourdomain.com"
-echo "  - Keycloak: https://keycloak.yourdomain.com/realms/myrealm"
-echo "  - Auth0: https://yourtenant.auth0.com"
-echo "  - Local: http://host.docker.internal:9000"
-echo ""
-while true; do
-    prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
-    if validate_url "$OAUTH_URL"; then
-        replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
-        echo -e "${GREEN}✓${NC} OAuth Provider Base URL set"
-        break
-    else
-        echo -e "${RED}✗ Invalid URL format. Please try again.${NC}"
+
+OAUTH_CONFIGURED=false
+if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
+    OAUTH_CONFIGURED=true
+    echo ""
+    echo "Examples: https://auth.yourdomain.com, https://keycloak.yourdomain.com/realms/myrealm"
+    while true; do
+        prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
+        if validate_url "$OAUTH_URL"; then
+            replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
+            break
+        else
+            echo -e "${RED}✗ Invalid URL format${NC}"
+        fi
+    done
+
+    # Open WebUI OAuth Configuration
+    echo ""
+    prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
+    replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
+
+    echo ""
+    echo "OpenID Provider URL examples:"
+    echo "  Authentik: ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration"
+    echo "  Keycloak: Include realm in base URL above"
+    echo ""
+    prompt_with_default "OpenID Provider URL" "" OPENID_URL
+    if [ -n "$OPENID_URL" ]; then
+        replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
     fi
-done
+
+    echo ""
+    prompt_with_default "OAuth Client ID" "" OAUTH_CLIENT_ID
+    replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OAUTH_CLIENT_ID"
+
+    echo ""
+    echo "Enter OAuth Client Secret:"
+    read -s OAUTH_CLIENT_SECRET
+    echo ""
+    replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OAUTH_CLIENT_SECRET"
+
+    # Set sensible OAuth defaults
+    replace_env_value "ENABLE_OAUTH_SIGNUP" "true"
+    replace_env_value "ENABLE_OAUTH_PERSISTENT_CONFIG" "true"
+    replace_env_value "OAUTH_MERGE_ACCOUNTS_BY_EMAIL" "true"
+    replace_env_value "OAUTH_SCOPES" "openid email profile"
+    replace_env_value "ENABLE_PASSWORD_AUTH" "true"
+
+    echo -e "${GREEN}✓${NC} OAuth/OIDC configured"
+else
+    echo -e "${BLUE}ℹ${NC}  Skipping OAuth configuration - local authentication only"
+fi
 echo ""
 
 echo -e "${BLUE}=== Step 2: Service URLs ===${NC}"
@@ -405,94 +441,10 @@ replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
 echo -e "  13. ${GREEN}✓${NC} Secret Key Base"
 echo ""
 
-echo -e "${BLUE}=== Step 6: Open WebUI OAuth/OIDC Configuration ===${NC}"
-echo ""
-echo "Configure Open WebUI-specific OAuth settings."
-echo ""
-echo -e "${YELLOW}After starting the stack, follow these steps:${NC}"
-echo ""
-echo "1. Log into your OAuth provider: $OAUTH_URL"
-echo "2. Create an OAuth2/OpenID Provider for Open WebUI:"
-echo "   - Redirect URI: ${OPEN_WEBUI_URL}/oauth/oidc/callback"
-echo "   - Scopes: openid, email, profile"
-echo "3. Note the OpenID Configuration URL (well-known endpoint)"
-echo "4. Copy the Client ID and Client Secret"
-echo ""
+# Set default app name
+replace_env_value "WEBUI_NAME" "Open WebUI"
 
-prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
-replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
-echo -e "${GREEN}✓${NC} OAuth Provider Name set"
-echo ""
-
-echo "Configure OpenID Provider URL (well-known configuration endpoint for Open WebUI):"
-echo "Examples based on your provider ($OAUTH_URL):"
-echo "  - Authentik: $OAUTH_URL/application/o/open-webui/.well-known/openid-configuration"
-echo "  - Keycloak: Include realm in base URL above"
-echo "  - Google: https://accounts.google.com/.well-known/openid-configuration"
-echo ""
-prompt_with_default "OpenID Provider URL" "" OPENID_URL
-if [ -n "$OPENID_URL" ]; then
-    replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
-    echo -e "${GREEN}✓${NC} OpenID Provider URL configured"
-fi
-echo ""
-
-if prompt_yes_no "Do you already have OAuth credentials?" "n"; then
-    echo ""
-    prompt_with_default "Open WebUI OAuth Client ID" "" OPEN_WEBUI_CLIENT_ID
-
-    if [ -n "$OPEN_WEBUI_CLIENT_ID" ]; then
-        replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OPEN_WEBUI_CLIENT_ID"
-
-        echo "Open WebUI OAuth Client Secret:"
-        read -s OPEN_WEBUI_CLIENT_SECRET
-        echo ""
-
-        if [ -n "$OPEN_WEBUI_CLIENT_SECRET" ]; then
-            replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OPEN_WEBUI_CLIENT_SECRET"
-            echo -e "${GREEN}✓${NC} OAuth credentials configured"
-        fi
-    fi
-else
-    echo -e "${YELLOW}⚠️  You'll need to configure OAuth later${NC}"
-    echo "   Update these in .env after creating the provider:"
-    echo "   - OPENID_PROVIDER_URL"
-    echo "   - OPEN_WEBUI_OAUTH_CLIENT_ID"
-    echo "   - OPEN_WEBUI_OAUTH_CLIENT_SECRET"
-fi
-echo ""
-
-echo -e "${BLUE}=== Step 7: Additional Configuration ===${NC}"
-echo ""
-
-if prompt_yes_no "Disable password authentication (SSO only for Open WebUI)?" "n"; then
-    replace_env_value "ENABLE_PASSWORD_AUTH" "false"
-    echo -e "${GREEN}✓${NC} Password authentication disabled (SSO only)"
-else
-    replace_env_value "ENABLE_PASSWORD_AUTH" "true"
-    echo -e "${GREEN}✓${NC} Password authentication enabled (can coexist with OAuth)"
-fi
-echo ""
-
-if prompt_yes_no "Enable OAuth signup for new users?" "y"; then
-    replace_env_value "ENABLE_OAUTH_SIGNUP" "true"
-    echo -e "${GREEN}✓${NC} OAuth signup enabled"
-else
-    replace_env_value "ENABLE_OAUTH_SIGNUP" "false"
-    echo -e "${YELLOW}⚠️${NC} OAuth signup disabled"
-fi
-echo ""
-
-if prompt_yes_no "Customize Open WebUI application name?" "n"; then
-    prompt_with_default "Application Name" "Open WebUI" WEBUI_NAME
-    replace_env_value "WEBUI_NAME" "$WEBUI_NAME"
-    echo -e "${GREEN}✓${NC} Application name set to: $WEBUI_NAME"
-else
-    replace_env_value "WEBUI_NAME" "Open WebUI"
-fi
-echo ""
-
-echo -e "${BLUE}=== Step 7.5: Meilisearch Configuration ===${NC}"
+echo -e "${BLUE}=== Step 6: Meilisearch Configuration ===${NC}"
 echo ""
 echo "Meilisearch provides fast search for indexed documentation."
 echo "Scrapix can automatically scrape and index websites into Meilisearch."
@@ -543,9 +495,9 @@ else
 fi
 echo ""
 
-echo -e "${BLUE}=== Step 8: Generating Optional Configuration ===${NC}"
+echo -e "${BLUE}=== Step 7: Generating Configuration ===${NC}"
 echo ""
-echo "Creating docker-compose.override.yml with optional configurations..."
+echo "Creating docker-compose.override.yml..."
 echo ""
 
 # Build override file content
@@ -691,20 +643,22 @@ echo ""
 echo "2. Start the stack:"
 echo "   docker compose up -d"
 echo ""
-if [ -z "$OPEN_WEBUI_CLIENT_ID" ]; then
-    echo "3. Configure OAuth in your provider ($OAUTH_URL):"
-    echo "   - Create OAuth2/OIDC Provider for Open WebUI"
-    echo "   - Redirect URI: ${OPEN_WEBUI_URL}/oauth/oidc/callback"
-    echo "   - Update .env with OPENID_PROVIDER_URL, Client ID and Secret"
-    echo "   - Restart: docker compose restart"
+if [ "$MEILISEARCH_CONFIGURED" = true ]; then
+    echo "3. Index documentation (optional):"
+    echo "   docker compose run scrapix"
     echo ""
 fi
-echo "4. Access services:"
-echo "   • OAuth Provider:  $OAUTH_URL"
+echo "$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3"). Access services:"
 echo "   • Open WebUI:      $OPEN_WEBUI_URL"
 echo "   • Langflow:        $LANGFLOW_URL"
 echo "   • Supabase Studio: $SITE_URL"
 echo "   • Supabase API:    $SUPABASE_PUBLIC_URL"
+if [ "$MEILISEARCH_CONFIGURED" = true ]; then
+    echo "   • Meilisearch:     http://localhost:7700"
+fi
+if [ "$OAUTH_CONFIGURED" = true ]; then
+    echo "   • OAuth Provider:  $OAUTH_URL"
+fi
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
