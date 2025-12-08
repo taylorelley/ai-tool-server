@@ -1,11 +1,12 @@
 """
 title: Meilisearch Documentation Search
 author: AI Tool Server Stack
-version: 1.0.0
+version: 1.1.0
 description: Search indexed documentation and websites using Meilisearch
 required_open_webui_version: 0.3.0
 """
 
+import os
 import requests
 from typing import Callable, Any
 from pydantic import BaseModel, Field
@@ -31,7 +32,13 @@ class Tools:
         )
 
     def __init__(self):
-        self.valves = self.Valves()
+        # Auto-configure from environment variables if available
+        self.valves = self.Valves(
+            MEILISEARCH_URL=os.getenv("MEILISEARCH_URL", "http://meilisearch:7700"),
+            MEILISEARCH_API_KEY=os.getenv("MEILISEARCH_API_KEY", ""),
+            MEILISEARCH_INDEX=os.getenv("MEILISEARCH_INDEX", "web_docs"),
+            RESULTS_LIMIT=int(os.getenv("MEILISEARCH_RESULTS_LIMIT", "5"))
+        )
 
     def search_docs(
         self,

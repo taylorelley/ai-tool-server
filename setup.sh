@@ -530,6 +530,12 @@ if prompt_yes_no "Configure Meilisearch for document search?" "n"; then
     echo -e "${GREEN}✓${NC} Meilisearch configured"
     echo "   Access Meilisearch at http://localhost:7700"
     echo "   Run 'docker compose run scrapix' to index documentation"
+    echo ""
+    echo -e "${BLUE}ℹ  To use Meilisearch in Open WebUI:${NC}"
+    echo "   1. Start the stack: docker compose up -d"
+    echo "   2. Import the tool: Admin Panel → Tools → Import Tool"
+    echo "   3. Upload: volumes/open-webui/tools/meilisearch_search.py"
+    echo "   4. The tool will auto-configure from environment variables"
     MEILISEARCH_CONFIGURED=true
 else
     echo -e "${YELLOW}⚠️${NC} Skipping Meilisearch configuration"
@@ -631,6 +637,13 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     # Supabase Integration
     OVERRIDE_CONTENT+="      - SUPABASE_URL=http://kong:8000\n"
     OVERRIDE_CONTENT+="      - SUPABASE_ANON_KEY=\${ANON_KEY}\n"
+
+    # Meilisearch Integration (if configured)
+    if [ "$MEILISEARCH_CONFIGURED" = true ]; then
+        OVERRIDE_CONTENT+="      - MEILISEARCH_URL=http://meilisearch:7700\n"
+        OVERRIDE_CONTENT+="      - MEILISEARCH_API_KEY=\${MEILI_MASTER_KEY}\n"
+        OVERRIDE_CONTENT+="      - ENABLE_RAG_WEB_SEARCH=true\n"
+    fi
 
     # PostgreSQL option
     if prompt_yes_no "Use PostgreSQL for Open WebUI instead of SQLite?" "n"; then

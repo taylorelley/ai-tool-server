@@ -61,10 +61,18 @@ The setup script will:
 - Generate cryptographically secure secrets
 - Configure service URLs and AI backends
 - Set up SMTP if needed
+- **Automatically configure Open WebUI and Langflow** with:
+  - AI model providers (Ollama, OpenAI, Anthropic, OpenRouter)
+  - Playwright service for web scraping
+  - Meilisearch for documentation search
+  - Supabase backend integration
+  - OAuth/OIDC authentication
 - **Create docker-compose.override.yml** for advanced configurations:
   - PostgreSQL database for Open WebUI (instead of SQLite)
   - Resource limits for production deployments
   - Automatic backup and merge of existing override files
+
+**📖 See [AUTOMATIC_CONFIGURATION.md](AUTOMATIC_CONFIGURATION.md) for complete details on all automatic configurations.**
 
 ### 2. Create Required Supabase Files
 
@@ -224,30 +232,47 @@ docker compose run scrapix
 
 #### Using the Meilisearch Tool in Open WebUI
 
+**Option A: Automatic Installation (Recommended)**
+
+```bash
+# Run the automatic installer script
+./scripts/install-meilisearch-tool.sh
+
+# Provide your Open WebUI admin credentials when prompted
+# The tool will be automatically installed and configured
+```
+
+**Option B: Manual Installation**
+
 1. **Access Open WebUI Admin Panel**:
    - Go to http://localhost:8080
    - Click your profile → Admin Panel → Tools
 
-2. **Configure the Meilisearch Search Tool**:
-   - Find "Meilisearch Documentation Search" in the tools list
-   - Click the settings icon to configure Valves (settings):
-     - **MEILISEARCH_URL**: `http://meilisearch:7700` (default)
-     - **MEILISEARCH_API_KEY**: Your `MEILI_MASTER_KEY` from `.env`
-     - **MEILISEARCH_INDEX**: `web_docs` (default)
-     - **RESULTS_LIMIT**: `5` (default, adjust as needed)
-   - Save the configuration
+2. **Import the Tool**:
+   - Click "Import Tool"
+   - Upload: `volumes/open-webui/tools/meilisearch_search.py`
+   - The tool will auto-configure from environment variables
 
-3. **Use in Chat**:
-   - Start a new chat in Open WebUI
-   - The AI will automatically use the Meilisearch tool when you ask questions about:
-     - Open WebUI features and configuration
-     - Claude/Anthropic API usage
-     - OpenAI API documentation
-     - Meilisearch setup and usage
-   - Example queries:
-     - "How do I configure OAuth in Open WebUI?"
-     - "What are Claude's rate limits?"
-     - "How do I use OpenAI function calling?"
+3. **Verify Configuration** (optional):
+   - Find "Meilisearch Documentation Search" in the tools list
+   - Click the settings icon to verify Valves (settings):
+     - **MEILISEARCH_URL**: `http://meilisearch:7700` ✅ Auto-configured
+     - **MEILISEARCH_API_KEY**: Your `MEILI_MASTER_KEY` ✅ Auto-configured
+     - **MEILISEARCH_INDEX**: `web_docs` ✅ Auto-configured
+     - **RESULTS_LIMIT**: `5` (adjust if needed)
+
+**Using the Tool in Chat:**
+
+- Start a new chat in Open WebUI
+- The AI will automatically use the Meilisearch tool when you ask questions about:
+  - Open WebUI features and configuration
+  - Claude/Anthropic API usage
+  - OpenAI API documentation
+  - Meilisearch setup and usage
+- Example queries:
+  - "How do I configure OAuth in Open WebUI?"
+  - "What are Claude's rate limits?"
+  - "How do I use OpenAI function calling?"
 
 #### Customizing Indexed Sites
 
