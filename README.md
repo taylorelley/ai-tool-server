@@ -170,7 +170,7 @@ docker compose ps
 |---------|-----|-------------|
 | Langflow | http://localhost:7860 | Create on first visit |
 | Open WebUI | http://localhost:8080 | Create on first visit |
-| Meilisearch | http://localhost:7700 | API Key: MEILI_MASTER_KEY from .env |
+| **Meilisearch Web UI** | http://localhost:7700 | API Key: MEILI_MASTER_KEY from .env |
 | Supabase Studio | http://localhost:3001 | From .env (DASHBOARD_USERNAME/PASSWORD) |
 | Supabase API | http://localhost:8000 | Use API keys (ANON_KEY/SERVICE_ROLE_KEY) |
 
@@ -313,6 +313,48 @@ Choose the appropriate scraping strategy in `scrapix.config.json`:
 - **`docssearch`** (recommended for documentation): Optimized for documentation sites with hierarchical structure
 - **`default`**: General-purpose web scraping
 - **`schema`**: Extracts structured data using schema.org markup
+
+#### Using the Meilisearch Web Interface
+
+Meilisearch includes a built-in web interface for managing and searching your indexes.
+
+**Accessing the Web Interface:**
+
+1. **Open in browser:** http://localhost:7700
+2. **Provide API Key:** Enter your `MEILI_MASTER_KEY` from `.env`
+
+**Features available in the web interface:**
+
+- **🔍 Search Preview**: Test searches across your indexes with live results
+- **📊 Index Management**: View all indexes, document counts, and settings
+- **📄 Document Browser**: Browse and inspect indexed documents
+- **⚙️ Settings**: Configure search settings, synonyms, stop words, ranking rules
+- **🔑 API Keys**: Manage API keys and permissions
+- **📈 Stats**: View index statistics and search analytics
+
+**Quick Actions:**
+
+```bash
+# Get your Meilisearch Master Key
+grep MEILI_MASTER_KEY .env
+
+# Test the web interface
+open http://localhost:7700
+# Or: xdg-open http://localhost:7700 (Linux)
+# Or: start http://localhost:7700 (Windows)
+```
+
+**Search Preview Example:**
+
+1. Access http://localhost:7700
+2. Enter your `MEILI_MASTER_KEY` when prompted
+3. Select the `web_docs` index
+4. Try a search query like "oauth configuration"
+5. View results with highlights and relevance scores
+
+**Production Deployment:**
+
+For production, you can expose the web interface via reverse proxy (see Production Deployment section) or restrict access to internal networks only.
 
 #### Monitoring Meilisearch
 

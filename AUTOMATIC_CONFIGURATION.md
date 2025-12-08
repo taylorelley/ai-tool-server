@@ -83,6 +83,21 @@ environment:
 - Search Open WebUI, Anthropic, OpenAI, Meilisearch documentation
 - Fast, typo-tolerant search with highlighting
 - Automatically configured from environment variables
+- **Built-in Web Interface** at http://localhost:7700
+  - Search preview with live results
+  - Index management and statistics
+  - Document browser and settings
+  - API key management
+
+**Accessing Web Interface:**
+```bash
+# Get your API key
+grep MEILI_MASTER_KEY .env
+
+# Access the interface
+open http://localhost:7700
+# Provide MEILI_MASTER_KEY when prompted
+```
 
 ### Supabase Backend Integration
 
