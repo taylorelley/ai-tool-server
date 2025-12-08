@@ -80,6 +80,21 @@ echo -e "${GREEN}✓${NC} Copying .env.template to .env..."
 cp .env.template .env
 echo ""
 
+# Create required volume directories
+echo -e "${BLUE}Creating required volume directories...${NC}"
+mkdir -p volumes/langflow/data volumes/langflow/db
+mkdir -p volumes/open-webui/data volumes/open-webui/tools
+mkdir -p volumes/playwright
+mkdir -p volumes/meilisearch
+mkdir -p volumes/db volumes/api volumes/functions volumes/logs volumes/pooler volumes/storage
+
+# Set proper permissions for Langflow data directory
+# Langflow container runs as non-root user and needs write access
+chmod -R 777 volumes/langflow/data
+
+echo -e "${GREEN}✓${NC} Volume directories created"
+echo ""
+
 # Function to generate a random secret (alphanumeric only for safety)
 generate_secret() {
     openssl rand -hex 16
