@@ -101,6 +101,38 @@ services:
       - ai-tools-net
       - supabase-net
 
+  meilisearch:
+    container_name: meilisearch
+    image: getmeili/meilisearch:${MEILISEARCH_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_ENV=${MEILI_ENV:-production}
+    volumes:
+      - ./volumes/meilisearch:/meili_data:Z
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai-tools-net
+
+  scrapix:
+    container_name: scrapix
+    image: getmeili/scrapix:${SCRAPIX_VERSION:-latest}
+    restart: "no"
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    volumes:
+      - ./scrapix.config.json:/app/scrapix.config.json:ro
+    command: ["run", "-p", "/app/scrapix.config.json"]
+    networks:
+      - ai-tools-net
+
   # ======================
   # SUPABASE LAYER
   # ======================

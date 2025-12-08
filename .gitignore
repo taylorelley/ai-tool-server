@@ -5,12 +5,17 @@
 *.pem
 *.key
 
+# Generated configuration files
+scrapix.config.json
+docker-compose.override.yml
+
 # Docker volumes and data
 volumes/db/data/
 volumes/langflow/
-volumes/open-webui/
+volumes/open-webui/data/
 volumes/playwright/
 volumes/storage/
+volumes/meilisearch/
 
 # But keep required configuration and initialization files
 !volumes/db/*.sql

@@ -8,7 +8,9 @@ This stack integrates AI development tools with Supabase as the backend storage 
 
 ### AI Tools Layer
 - **Langflow** (port 7860) - Visual AI workflow builder with direct Supabase integration
-- **Open WebUI** (port 8080) - Modern LLM chat interface
+- **Open WebUI** (port 8080) - Modern LLM chat interface with custom Tools support
+- **Meilisearch** (port 7700) - Fast search engine for indexed documentation
+- **Scrapix** (on-demand) - Web scraper for indexing documentation sites
 - **Playwright** (internal) - Browser automation for Open WebUI
 
 ### Supabase Backend Layer (Storage for AI Flows)
@@ -160,6 +162,7 @@ docker compose ps
 |---------|-----|-------------|
 | Langflow | http://localhost:7860 | Create on first visit |
 | Open WebUI | http://localhost:8080 | Create on first visit |
+| Meilisearch | http://localhost:7700 | API Key: MEILI_MASTER_KEY from .env |
 | Supabase Studio | http://localhost:3001 | From .env (DASHBOARD_USERNAME/PASSWORD) |
 | Supabase API | http://localhost:8000 | Use API keys (ANON_KEY/SERVICE_ROLE_KEY) |
 
@@ -188,6 +191,130 @@ docker compose ps
 2. Set `OPENROUTER_API_KEY` in `.env`
 3. Configure models in Open WebUI or Langflow using OpenRouter endpoints
 
+### Using Meilisearch for Document Search
+
+Meilisearch provides fast, typo-tolerant search for indexed documentation. It integrates with Open WebUI via a custom Tool.
+
+#### Initial Setup
+
+During `./setup.sh`, choose "yes" when prompted to configure Meilisearch. This will:
+- Generate a secure `MEILI_MASTER_KEY`
+- Create `scrapix.config.json` with default documentation sites to index
+
+Default indexed sites include:
+- Open WebUI documentation
+- Anthropic/Claude documentation
+- OpenAI documentation
+- Meilisearch documentation
+
+#### Indexing Documentation
+
+After starting the stack, run Scrapix to index the configured sites:
+
+```bash
+# Start all services first
+docker compose up -d
+
+# Run Scrapix to index documentation
+docker compose run scrapix
+
+# This may take several minutes depending on the number of sites
+# Scrapix will scrape and index all content into Meilisearch
+```
+
+#### Using the Meilisearch Tool in Open WebUI
+
+1. **Access Open WebUI Admin Panel**:
+   - Go to http://localhost:8080
+   - Click your profile → Admin Panel → Tools
+
+2. **Configure the Meilisearch Search Tool**:
+   - Find "Meilisearch Documentation Search" in the tools list
+   - Click the settings icon to configure Valves (settings):
+     - **MEILISEARCH_URL**: `http://meilisearch:7700` (default)
+     - **MEILISEARCH_API_KEY**: Your `MEILI_MASTER_KEY` from `.env`
+     - **MEILISEARCH_INDEX**: `web_docs` (default)
+     - **RESULTS_LIMIT**: `5` (default, adjust as needed)
+   - Save the configuration
+
+3. **Use in Chat**:
+   - Start a new chat in Open WebUI
+   - The AI will automatically use the Meilisearch tool when you ask questions about:
+     - Open WebUI features and configuration
+     - Claude/Anthropic API usage
+     - OpenAI API documentation
+     - Meilisearch setup and usage
+   - Example queries:
+     - "How do I configure OAuth in Open WebUI?"
+     - "What are Claude's rate limits?"
+     - "How do I use OpenAI function calling?"
+
+#### Customizing Indexed Sites
+
+Edit `scrapix.config.json` to add or remove sites:
+
+```json
+{
+  "start_urls": [
+    "https://docs.openwebui.com",
+    "https://docs.anthropic.com",
+    "https://platform.openai.com/docs",
+    "https://docs.meilisearch.com",
+    "https://your-custom-docs-site.com"
+  ],
+  "strategy": "docssearch",
+  "urls_to_exclude": [
+    "*/api-reference/*",
+    "*/changelog/*"
+  ]
+}
+```
+
+After editing, re-run Scrapix to update the index:
+
+```bash
+# Clear the existing index (optional)
+curl -X DELETE "http://localhost:7700/indexes/web_docs" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY"
+
+# Re-index with updated configuration
+docker compose run scrapix
+```
+
+#### Scrapix Strategies
+
+Choose the appropriate scraping strategy in `scrapix.config.json`:
+
+- **`docssearch`** (recommended for documentation): Optimized for documentation sites with hierarchical structure
+- **`default`**: General-purpose web scraping
+- **`schema`**: Extracts structured data using schema.org markup
+
+#### Monitoring Meilisearch
+
+```bash
+# Check Meilisearch health
+curl http://localhost:7700/health
+
+# View index stats
+curl "http://localhost:7700/indexes/web_docs/stats" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY"
+
+# Search directly via API
+curl "http://localhost:7700/indexes/web_docs/search" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  --data-binary '{ "q": "oauth configuration" }'
+```
+
+#### Combining with Web Search
+
+Open WebUI can use both Meilisearch (for indexed documentation) and web search (for current information):
+
+- **Meilisearch**: Fast, accurate search of indexed documentation
+- **Web Search**: Real-time information from the internet
+
+The AI will choose the appropriate tool based on your query.
+
 ### Network Architecture
 
 The stack uses two Docker networks with cross-network access:
@@ -209,7 +336,9 @@ volumes/
 │   ├── db/          # Langflow PostgreSQL data
 │   └── data/        # Langflow flows & configs
 ├── open-webui/
-│   └── data/        # Chat history & settings
+│   ├── data/        # Chat history & settings
+│   └── tools/       # Custom Open WebUI Tools (e.g., Meilisearch)
+├── meilisearch/     # Indexed documentation data
 ├── playwright/      # Browser data
 ├── db/
 │   └── data/        # Supabase PostgreSQL data
@@ -353,6 +482,50 @@ docker compose logs open-webui
 docker compose restart open-webui
 ```
 
+### Meilisearch search not working
+
+```bash
+# Check Meilisearch health
+docker compose ps meilisearch
+curl http://localhost:7700/health
+
+# Verify index exists and has documents
+curl "http://localhost:7700/indexes/web_docs/stats" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY"
+
+# Check if Scrapix has been run
+docker compose logs scrapix
+
+# Re-index documentation
+docker compose run scrapix
+
+# Verify the Meilisearch Tool is configured in Open WebUI
+# Admin Panel → Tools → Meilisearch Documentation Search → Settings
+# Ensure MEILISEARCH_API_KEY matches MEILI_MASTER_KEY from .env
+```
+
+### Scrapix fails to index sites
+
+```bash
+# Check Scrapix logs for errors
+docker compose logs scrapix
+
+# Verify scrapix.config.json exists and is valid
+cat scrapix.config.json | jq
+
+# Ensure Meilisearch is healthy before running Scrapix
+docker compose ps meilisearch
+
+# Try running Scrapix with verbose output
+docker compose run scrapix run -p /app/scrapix.config.json
+
+# Common issues:
+# - Network connectivity (Scrapix needs internet access)
+# - Invalid URLs in start_urls
+# - Sites blocking automated access (check robots.txt)
+# - Meilisearch not ready (wait 30s after starting)
+```
+
 ### Supabase Studio won't load
 
 ```bash
@@ -400,6 +573,7 @@ docker compose ps --format "table {{.Name}}\t{{.Status}}"
 # Test endpoints
 curl http://localhost:7860/health      # Langflow
 curl http://localhost:8080/health      # Open WebUI
+curl http://localhost:7700/health      # Meilisearch
 curl http://localhost:8000/health      # Supabase API
 curl http://localhost:3001/api/profile # Supabase Studio
 ```
@@ -512,9 +686,23 @@ server {
 server {
     listen 80;
     server_name studio.yourdomain.com;
-    
+
     location / {
         proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Meilisearch (optional, if exposing publicly)
+server {
+    listen 80;
+    server_name search.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:7700;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

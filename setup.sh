@@ -356,7 +356,7 @@ echo ""
 
 echo -e "${BLUE}=== Step 5: Generating Secure Secrets ===${NC}"
 echo ""
-echo "Generating 12 cryptographically secure secrets..."
+echo "Generating 13 cryptographically secure secrets..."
 echo ""
 
 secrets=(
@@ -371,6 +371,7 @@ secrets=(
     "POSTGRES_PASSWORD:PostgreSQL Password"
     "LANGFLOW_DB_PASSWORD:Langflow DB Password"
     "DASHBOARD_PASSWORD:Dashboard Password"
+    "MEILI_MASTER_KEY:Meilisearch Master Key"
 )
 
 counter=1
@@ -386,7 +387,7 @@ echo ""
 echo "Generating SECRET_KEY_BASE (64 chars)..."
 SECRET_KEY_BASE=$(generate_long_secret 64)
 replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
-echo -e "  12. ${GREEN}✓${NC} Secret Key Base"
+echo -e "  13. ${GREEN}✓${NC} Secret Key Base"
 echo ""
 
 echo -e "${BLUE}=== Step 6: Open WebUI OAuth/OIDC Configuration ===${NC}"
@@ -473,6 +474,51 @@ if prompt_yes_no "Customize Open WebUI application name?" "n"; then
     echo -e "${GREEN}✓${NC} Application name set to: $WEBUI_NAME"
 else
     replace_env_value "WEBUI_NAME" "Open WebUI"
+fi
+echo ""
+
+echo -e "${BLUE}=== Step 7.5: Meilisearch Configuration (Optional) ===${NC}"
+echo ""
+echo "Meilisearch provides fast search for indexed documentation."
+echo "Scrapix can automatically scrape and index websites into Meilisearch."
+echo ""
+
+if prompt_yes_no "Configure Meilisearch for document search?" "n"; then
+    echo ""
+    echo "Meilisearch Master Key has been generated automatically."
+    echo ""
+
+    if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
+        echo ""
+        echo "Creating scrapix.config.json from template..."
+
+        # Check if config already exists
+        if [ -f scrapix.config.json ]; then
+            echo -e "${YELLOW}⚠️  scrapix.config.json already exists${NC}"
+        else
+            # Create config from template, replacing the placeholder
+            sed "s/\${MEILI_MASTER_KEY}/$(grep MEILI_MASTER_KEY .env | cut -d '=' -f2)/g" \
+                scrapix.config.json.template > scrapix.config.json
+            echo -e "${GREEN}✓${NC} Created scrapix.config.json"
+            echo ""
+            echo "Default indexed sites:"
+            echo "  • Open WebUI docs"
+            echo "  • Anthropic/Claude docs"
+            echo "  • OpenAI docs"
+            echo "  • Meilisearch docs"
+            echo ""
+            echo "Edit scrapix.config.json to customize the list of sites to index."
+        fi
+    fi
+
+    echo ""
+    echo -e "${GREEN}✓${NC} Meilisearch configured"
+    echo "   Access Meilisearch at http://localhost:7700"
+    echo "   Run 'docker compose run scrapix' to index documentation"
+    MEILISEARCH_CONFIGURED=true
+else
+    echo -e "${YELLOW}⚠️${NC} Skipping Meilisearch configuration"
+    MEILISEARCH_CONFIGURED=false
 fi
 echo ""
 
