@@ -492,13 +492,13 @@ else
 fi
 echo ""
 
-echo -e "${BLUE}=== Step 7.5: Meilisearch Configuration (Optional) ===${NC}"
+echo -e "${BLUE}=== Step 7.5: Meilisearch Configuration ===${NC}"
 echo ""
 echo "Meilisearch provides fast search for indexed documentation."
 echo "Scrapix can automatically scrape and index websites into Meilisearch."
 echo ""
 
-if prompt_yes_no "Configure Meilisearch for document search?" "n"; then
+if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
     echo ""
     echo "Meilisearch Master Key has been generated automatically."
     echo ""
