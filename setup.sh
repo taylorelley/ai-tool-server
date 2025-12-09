@@ -41,17 +41,55 @@ BOX_HD="┳"
 TOTAL_STEPS=7
 CURRENT_STEP=0
 
-# Clear screen and show header
-clear
-echo ""
-echo -e "${CYAN}${BOX_TL}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_TR}${NC}"
-echo -e "${CYAN}${BOX_V}${NC}                                                           ${CYAN}${BOX_V}${NC}"
-echo -e "${CYAN}${BOX_V}${NC}     ${WHITE}${BOLD}🚀 AI Tool Server Stack - Interactive Setup${NC}      ${CYAN}${BOX_V}${NC}"
-echo -e "${CYAN}${BOX_V}${NC}                                                           ${CYAN}${BOX_V}${NC}"
-echo -e "${CYAN}${BOX_V}${NC}     ${DIM}Langflow • Open WebUI • Supabase • Meilisearch${NC}     ${CYAN}${BOX_V}${NC}"
-echo -e "${CYAN}${BOX_V}${NC}                                                           ${CYAN}${BOX_V}${NC}"
-echo -e "${CYAN}${BOX_BL}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_H}${BOX_BR}${NC}"
-echo ""
+# Terminal dimensions
+TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
+TERM_HEIGHT=$(tput lines 2>/dev/null || echo 24)
+
+# Center text function
+center_text() {
+    local text=$1
+    local width=${2:-$TERM_WIDTH}
+    local text_length=${#text}
+    local padding=$(( (width - text_length) / 2 ))
+    printf "%${padding}s%s\n" "" "$text"
+}
+
+# Show main header
+show_header() {
+    clear
+    echo ""
+    echo ""
+    echo -e "${CYAN}${BOLD}"
+    center_text "╔════════════════════════════════════════════════════════════════╗"
+    center_text "║                                                                ║"
+    center_text "║           🚀  AI Tool Server Stack Installation  🚀            ║"
+    center_text "║                                                                ║"
+    center_text "╚════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    echo ""
+    center_text "${DIM}Langflow  •  Open WebUI  •  Supabase  •  Meilisearch${NC}"
+    echo ""
+    echo ""
+}
+
+# Progress bar function
+print_progress_bar() {
+    local current=$1
+    local total=$2
+    local width=50
+    local percentage=$((current * 100 / total))
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+
+    echo ""
+    printf "   "
+    echo -ne "${CYAN}${BOLD}Progress: ${NC}"
+    echo -ne "${GREEN}["
+    printf "%${filled}s" | tr ' ' '█'
+    printf "%${empty}s" | tr ' ' '░'
+    echo -e "]${NC} ${WHITE}${percentage}%%${NC}"
+    echo ""
+}
 
 # TUI Helper Functions
 print_step_header() {
@@ -59,16 +97,38 @@ print_step_header() {
     local step_title=$2
     CURRENT_STEP=$step_num
 
+    # Clear screen and show progress
+    clear
     echo ""
-    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC} ${BOLD}Step ${step_num}/${TOTAL_STEPS}:${NC} ${WHITE}${step_title}${NC}"
-    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Show step counter with color
+    echo -e "${MAGENTA}${BOLD}"
+    center_text "╔════════════════════════════════════════════════════════════════╗"
+    center_text "║                    STEP ${step_num} OF ${TOTAL_STEPS}                              ║"
+    center_text "╚════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+
+    # Progress bar
+    print_progress_bar "$step_num" "$TOTAL_STEPS"
+
+    # Step title
+    echo ""
+    echo -e "${CYAN}${BOLD}▸ ${WHITE}${step_title}${NC}"
+    echo ""
+    print_separator
     echo ""
 }
 
 print_subsection() {
     echo ""
-    echo -e "${DIM}┌─ $1${NC}"
+    echo -e "${YELLOW}┌─${NC} ${BOLD}$1${NC}"
+}
+
+print_step_complete() {
+    echo ""
+    echo -e "   ${GREEN}${BOLD}✓ Step completed${NC}"
+    sleep 0.5
 }
 
 print_info() {
@@ -101,8 +161,17 @@ print_config_item() {
     echo -e "  ${DIM}${label}:${NC} ${WHITE}${value}${NC}"
 }
 
+# Show main header
+show_header
+
 # Pre-flight checks
-echo -e "${MAGENTA}${BOX_TL}${BOX_H}${BOX_H}${BOX_H} Pre-flight Checks ${BOX_H}${BOX_H}${BOX_H}${BOX_TR}${NC}"
+echo ""
+echo -e "${MAGENTA}${BOLD}╔════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${MAGENTA}${BOLD}"
+center_text "PRE-FLIGHT CHECKS"
+echo -e "${NC}"
+echo -e "${MAGENTA}${BOLD}╚════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
 echo ""
 
 # Check for required commands
@@ -110,8 +179,10 @@ MISSING_COMMANDS=()
 for cmd in openssl curl docker; do
     if ! command -v $cmd &> /dev/null; then
         MISSING_COMMANDS+=("$cmd")
+        echo -n "   "
         print_error "$cmd not found"
     else
+        echo -n "   "
         print_success "$cmd found"
     fi
 done
@@ -126,17 +197,26 @@ fi
 
 # Check Docker is running
 if ! docker info &> /dev/null 2>&1; then
+    echo -n "   "
     print_error "Docker is not running"
     echo ""
-    echo "Please start Docker and try again."
+    echo "   Please start Docker and try again."
     exit 1
 else
+    echo -n "   "
     print_success "Docker is running"
 fi
 
 echo ""
-print_separator
 echo ""
+echo -e "${GREEN}${BOLD}"
+center_text "✓ All checks passed!"
+echo -e "${NC}"
+echo ""
+echo ""
+
+# Pause for dramatic effect
+sleep 1
 
 # Check if .env already exists
 if [ -f .env ]; then
@@ -339,7 +419,8 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
 else
     print_info "Skipping OAuth configuration - using local authentication only"
 fi
-echo ""
+
+print_step_complete
 
 print_step_header 2 "Service URLs"
 
@@ -389,7 +470,8 @@ replace_env_value "LANGFLOW_URL" "$LANGFLOW_URL"
 replace_env_value "SUPABASE_PUBLIC_URL" "$SUPABASE_PUBLIC_URL"
 replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
-echo ""
+
+print_step_complete
 
 print_step_header 3 "AI Model Backend Configuration"
 
@@ -450,7 +532,8 @@ if prompt_yes_no "Configure OpenRouter?" "n"; then
         print_warning "No API key entered"
     fi
 fi
-echo ""
+
+print_step_complete
 
 print_step_header 4 "SMTP Configuration (Optional)"
 
@@ -502,7 +585,8 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
 else
     print_info "Skipping SMTP configuration"
 fi
-echo ""
+
+print_step_complete
 
 print_step_header 5 "Generating Secure Secrets"
 
@@ -542,10 +626,11 @@ echo -e "  ${DIM}[${counter}/${total_secrets}]${NC} ${GREEN}✓${NC} Secret Key 
 echo ""
 
 print_success "All secrets generated securely"
-echo ""
 
 # Set default app name
 replace_env_value "WEBUI_NAME" "Open WebUI"
+
+print_step_complete
 
 print_step_header 6 "Meilisearch Configuration"
 
@@ -597,7 +682,8 @@ else
     print_info "Skipping Meilisearch configuration"
     MEILISEARCH_CONFIGURED=false
 fi
-echo ""
+
+print_step_complete
 
 print_step_header 7 "Generating Configuration"
 
@@ -719,16 +805,36 @@ echo ""
 # Set proper permissions
 chmod 600 .env
 
+# Epic completion screen
+clear
 echo ""
-print_separator
 echo ""
-echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}${BOLD}║                    ✓ Setup Complete!                     ║${NC}"
-echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Big success banner
+echo -e "${GREEN}${BOLD}"
+center_text "╔══════════════════════════════════════════════════════════════════╗"
+center_text "║                                                                  ║"
+center_text "║                  ✨  INSTALLATION COMPLETE!  ✨                  ║"
+center_text "║                                                                  ║"
+center_text "║              🎉  Your AI Stack is Ready to Deploy!  🎉           ║"
+center_text "║                                                                  ║"
+center_text "╚══════════════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+
+echo ""
+echo ""
+
+# Full progress bar at 100%
+print_progress_bar "$TOTAL_STEPS" "$TOTAL_STEPS"
+
+echo ""
 echo ""
 
 # Configuration Summary
-echo -e "${CYAN}${BOLD}Configuration Summary${NC}"
+echo -e "${CYAN}${BOLD}"
+center_text "═══════════════════ CONFIGURATION SUMMARY ════════════════════"
+echo -e "${NC}"
 echo ""
 print_config_item "Secrets Generated   " "13 cryptographically secure keys"
 print_config_item "Environment File    " ".env (permissions: 600)"
@@ -775,22 +881,26 @@ if [ -f docker-compose.override.yml ] && [ "$SKIP_OVERRIDE" != true ]; then
 fi
 
 echo ""
-print_separator
 echo ""
-echo -e "${CYAN}${BOLD}Next Steps${NC}"
+echo -e "${YELLOW}${BOLD}"
+center_text "━━━━━━━━━━━━━━━━━━━━━━━ NEXT STEPS ━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${NC}"
 echo ""
-echo -e "${YELLOW}▸${NC} ${BOLD}1. Download Supabase Files${NC}"
-echo -e "   ${DIM}See README.md 'Create Required Supabase Files' section${NC}"
 echo ""
-echo -e "${YELLOW}▸${NC} ${BOLD}2. Start the Stack${NC}"
-echo -e "   ${CYAN}docker compose up -d${NC}"
+
+echo -e "   ${YELLOW}▸${NC} ${BOLD}${WHITE}1. Download Supabase Files${NC}"
+echo -e "      ${DIM}See README.md 'Create Required Supabase Files' section${NC}"
+echo ""
+echo -e "   ${YELLOW}▸${NC} ${BOLD}${WHITE}2. Start the Stack${NC}"
+echo -e "      ${GREEN}${BOLD}docker compose up -d${NC}"
 echo ""
 if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-    echo -e "${YELLOW}▸${NC} ${BOLD}3. Index Documentation${NC} ${DIM}(optional)${NC}"
-    echo -e "   ${CYAN}docker compose run scrapix${NC}"
+    echo -e "   ${YELLOW}▸${NC} ${BOLD}${WHITE}3. Index Documentation${NC} ${DIM}(optional)${NC}"
+    echo -e "      ${GREEN}${BOLD}docker compose run scrapix${NC}"
     echo ""
 fi
-echo -e "${YELLOW}▸${NC} ${BOLD}$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3"). Access Your Services${NC}"
+echo -e "   ${YELLOW}▸${NC} ${BOLD}${WHITE}$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3"). Access Your Services${NC}"
+echo ""
 echo ""
 print_config_item "Open WebUI      " "$OPEN_WEBUI_URL"
 print_config_item "Langflow        " "$LANGFLOW_URL"
@@ -802,15 +912,26 @@ fi
 if [ "$OAUTH_CONFIGURED" = true ]; then
     print_config_item "OAuth Provider  " "$OAUTH_URL"
 fi
+
 echo ""
-print_separator
 echo ""
-echo -e "${MAGENTA}${BOLD}📚 Documentation${NC}"
+echo -e "${MAGENTA}${BOLD}"
+center_text "━━━━━━━━━━━━━━━━━━━━━━ 📚 DOCUMENTATION ━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${NC}"
+echo ""
 echo ""
 print_config_item "Full Guide      " "README.md"
 print_config_item "Authentik Setup " "docs/EXTERNAL_AUTHENTIK_SETUP.md"
 print_config_item "Quick Reference " "docs/QUICK_REFERENCE.md"
 print_config_item "Troubleshooting " "docs/TROUBLESHOOTING.md"
+
 echo ""
-print_success "Setup completed successfully!"
+echo ""
+echo ""
+echo -e "${GREEN}${BOLD}"
+center_text "✓ Setup completed successfully!"
+echo -e "${NC}"
+echo ""
+center_text "${DIM}Thank you for using AI Tool Server Stack!${NC}"
+echo ""
 echo ""
