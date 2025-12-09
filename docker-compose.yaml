@@ -122,6 +122,18 @@ services:
     networks:
       - ai-tools-net
 
+  meilisearch-ui:
+    container_name: meilisearch-ui
+    image: riccoxie/meilisearch-ui:latest
+    restart: unless-stopped
+    ports:
+      - "${MEILISEARCH_UI_PORT:-7701}:24900"
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - ai-tools-net
+
   scrapix:
     container_name: scrapix
     image: getmeili/scrapix:${SCRAPIX_VERSION:-latest}

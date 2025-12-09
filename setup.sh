@@ -410,6 +410,7 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     API_EXTERNAL_URL="https://db-api.${DOMAIN}"
     SITE_URL="https://db-admin.${DOMAIN}"
     MEILISEARCH_URL="https://search.${DOMAIN}"
+    MEILISEARCH_UI_URL="https://search-ui.${DOMAIN}"
 
     if prompt_yes_no "Customize auto-configured URLs?" "n"; then
         prompt_with_default "Open WebUI URL" "$OPEN_WEBUI_URL" OPEN_WEBUI_URL
@@ -417,6 +418,7 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
         prompt_with_default "Supabase API URL" "$SUPABASE_PUBLIC_URL" SUPABASE_PUBLIC_URL
         prompt_with_default "Supabase Studio URL" "$SITE_URL" SITE_URL
         prompt_with_default "Meilisearch URL" "$MEILISEARCH_URL" MEILISEARCH_URL
+        prompt_with_default "Meilisearch UI URL" "$MEILISEARCH_UI_URL" MEILISEARCH_UI_URL
         API_EXTERNAL_URL="$SUPABASE_PUBLIC_URL"
     fi
 else
@@ -427,6 +429,7 @@ else
     API_EXTERNAL_URL="http://localhost:8000"
     SITE_URL="http://localhost:3001"
     MEILISEARCH_URL="http://localhost:7700"
+    MEILISEARCH_UI_URL="http://localhost:7701"
 fi
 
 replace_env_value "OPEN_WEBUI_URL" "$OPEN_WEBUI_URL"
@@ -822,7 +825,8 @@ SUMMARY+="Open WebUI:      ${OPEN_WEBUI_URL}\n"
 SUMMARY+="Langflow:        ${LANGFLOW_URL}\n"
 SUMMARY+="Supabase Studio: ${SITE_URL}\n"
 SUMMARY+="Supabase API:    ${SUPABASE_PUBLIC_URL}\n"
-SUMMARY+="Meilisearch:     ${MEILISEARCH_URL}\n"
+SUMMARY+="Meilisearch API: ${MEILISEARCH_URL}\n"
+SUMMARY+="Meilisearch UI:  ${MEILISEARCH_UI_URL}\n"
 
 if [ "$OAUTH_CONFIGURED" = true ]; then
     SUMMARY+="\nOAuth Provider:  ${OAUTH_URL}\n"
