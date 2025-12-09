@@ -324,9 +324,9 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
 
     OPEN_WEBUI_URL="https://chat.${DOMAIN}"
     LANGFLOW_URL="https://flow.${DOMAIN}"
-    SUPABASE_PUBLIC_URL="https://db.${DOMAIN}"
-    API_EXTERNAL_URL="https://db.${DOMAIN}"
-    SITE_URL="https://db.${DOMAIN}:3001"
+    SUPABASE_PUBLIC_URL="https://db-api.${DOMAIN}"
+    API_EXTERNAL_URL="https://db-api.${DOMAIN}"
+    SITE_URL="https://db-admin.${DOMAIN}"
 
     echo ""
     echo "Auto-configured URLs:"
