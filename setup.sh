@@ -409,8 +409,8 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     SUPABASE_PUBLIC_URL="https://db-api.${DOMAIN}"
     API_EXTERNAL_URL="https://db-api.${DOMAIN}"
     SITE_URL="https://db-admin.${DOMAIN}"
-    MEILISEARCH_URL="https://search.${DOMAIN}"
-    MEILISEARCH_UI_URL="https://search-ui.${DOMAIN}"
+    MEILISEARCH_URL="https://search-api.${DOMAIN}"
+    MEILISEARCH_UI_URL="https://search.${DOMAIN}"
 
     if prompt_yes_no "Customize auto-configured URLs?" "n"; then
         prompt_with_default "Open WebUI URL" "$OPEN_WEBUI_URL" OPEN_WEBUI_URL
