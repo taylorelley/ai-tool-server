@@ -55,11 +55,7 @@ CURRENT_STEP=0
 TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
 TERM_HEIGHT=$(tput lines 2>/dev/null || echo 24)
 
-# Check for whiptail availability
-HAS_WHIPTAIL=false
-if command -v whiptail &> /dev/null; then
-    HAS_WHIPTAIL=true
-fi
+# Whiptail is now a required dependency (checked in pre-flight)
 
 # Center text function
 center_text() {
@@ -227,7 +223,7 @@ echo ""
 
 # Check for required commands
 MISSING_COMMANDS=()
-for cmd in openssl curl docker; do
+for cmd in openssl curl docker whiptail; do
     if ! command -v $cmd &> /dev/null; then
         MISSING_COMMANDS+=("$cmd")
         echo -n "   "
@@ -242,6 +238,16 @@ if [ ${#MISSING_COMMANDS[@]} -gt 0 ]; then
     echo ""
     print_error "Missing required dependencies"
     echo ""
+
+    # Provide installation instructions
+    if [[ " ${MISSING_COMMANDS[@]} " =~ " whiptail " ]]; then
+        echo "To install whiptail:"
+        echo "  Ubuntu/Debian: sudo apt-get install whiptail"
+        echo "  CentOS/RHEL:   sudo yum install newt"
+        echo "  macOS:         brew install newt"
+        echo ""
+    fi
+
     echo "Please install the missing dependencies and try again."
     exit 1
 fi
@@ -340,32 +346,19 @@ prompt_with_default() {
     local default=$2
     local varname=$3
 
-    if [ "$HAS_WHIPTAIL" = true ]; then
-        # Use whiptail inputbox
-        local result
-        result=$(whiptail --title "AI Tool Server Stack" \
-                         --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
-                         --inputbox "$prompt" \
-                         10 70 \
-                         "$default" \
-                         3>&1 1>&2 2>&3)
+    local result
+    result=$(whiptail --title "AI Tool Server Stack" \
+                     --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
+                     --inputbox "$prompt" \
+                     10 70 \
+                     "$default" \
+                     3>&1 1>&2 2>&3)
 
-        # If user cancelled, use default
-        if [ $? -eq 0 ]; then
-            eval $varname="'$result'"
-        else
-            eval $varname="'$default'"
-        fi
+    # If user cancelled, use default
+    if [ $? -eq 0 ]; then
+        eval $varname="'$result'"
     else
-        # Fallback to standard prompt
-        if [ -n "$default" ]; then
-            read -p "$prompt [$default]: " value
-            value=${value:-$default}
-        else
-            read -p "$prompt: " value
-        fi
-
-        eval $varname="'$value'"
+        eval $varname="'$default'"
     fi
 }
 
@@ -374,23 +367,14 @@ prompt_password() {
     local prompt=$1
     local varname=$2
 
-    if [ "$HAS_WHIPTAIL" = true ]; then
-        # Use whiptail passwordbox
-        local result
-        result=$(whiptail --title "AI Tool Server Stack" \
-                         --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
-                         --passwordbox "$prompt" \
-                         10 70 \
-                         3>&1 1>&2 2>&3)
+    local result
+    result=$(whiptail --title "AI Tool Server Stack" \
+                     --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
+                     --passwordbox "$prompt" \
+                     10 70 \
+                     3>&1 1>&2 2>&3)
 
-        eval $varname="'$result'"
-    else
-        # Fallback to standard prompt
-        echo "$prompt"
-        read -s value
-        echo ""
-        eval $varname="'$value'"
-    fi
+    eval $varname="'$result'"
 }
 
 # Function to prompt for yes/no
@@ -398,36 +382,19 @@ prompt_yes_no() {
     local prompt=$1
     local default=$2
 
-    if [ "$HAS_WHIPTAIL" = true ]; then
-        # Use whiptail for a nicer dialog
-        local default_item=""
-        if [ "$default" = "y" ]; then
-            default_item="--defaultno"
-        fi
+    local default_item=""
+    if [ "$default" = "y" ]; then
+        default_item="--defaultno"
+    fi
 
-        if whiptail --title "AI Tool Server Stack" \
-                    --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
-                    --yesno "$prompt" \
-                    10 70 \
-                    $default_item 3>&1 1>&2 2>&3; then
-            return 0
-        else
-            return 1
-        fi
+    if whiptail --title "AI Tool Server Stack" \
+                --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
+                --yesno "$prompt" \
+                10 70 \
+                $default_item 3>&1 1>&2 2>&3; then
+        return 0
     else
-        # Fallback to standard prompt
-        if [ "$default" = "y" ]; then
-            read -p "$prompt (Y/n): " -n 1 -r
-        else
-            read -p "$prompt (y/N): " -n 1 -r
-        fi
-        echo
-
-        if [ "$default" = "y" ]; then
-            [[ ! $REPLY =~ ^[Nn]$ ]]
-        else
-            [[ $REPLY =~ ^[Yy]$ ]]
-        fi
+        return 1
     fi
 }
 
