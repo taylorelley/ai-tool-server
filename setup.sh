@@ -398,10 +398,7 @@ validate_port() {
 
 CURRENT_STEP=1
 
-# Step 1 Introduction
-whiptail --title "Step 1 of $TOTAL_STEPS: Service URLs" \
-         --msgbox "\nConfigure URLs for your services\n\nThis determines how users will access your tools:\n\n  Development Mode:\n  • Uses localhost URLs\n  • Good for testing and local development\n\n  Production Mode:\n  • Uses your custom domain\n  • Required for OAuth callbacks\n  • Requires reverse proxy (nginx, Caddy, Traefik)" \
-         18 70
+# Step 1: Service URLs (no intro dialog needed)
 
 if prompt_yes_no "Is this a production deployment?" "n"; then
     PRODUCTION=true
@@ -413,23 +410,13 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     API_EXTERNAL_URL="https://db-api.${DOMAIN}"
     SITE_URL="https://db-admin.${DOMAIN}"
 
-    # Show auto-configured URLs
-    whiptail --title "Auto-configured URLs" \
-             --msgbox "\nProduction URLs configured for ${DOMAIN}:\n\n  Open WebUI:      ${OPEN_WEBUI_URL}\n  Langflow:        ${LANGFLOW_URL}\n  Supabase API:    ${SUPABASE_PUBLIC_URL}\n  Supabase Studio: ${SITE_URL}\n\nWould you like to customize these?" \
-             16 70
-
-    if prompt_yes_no "Customize these URLs?" "n"; then
+    if prompt_yes_no "Customize auto-configured URLs?" "n"; then
         prompt_with_default "Open WebUI URL" "$OPEN_WEBUI_URL" OPEN_WEBUI_URL
         prompt_with_default "Langflow URL" "$LANGFLOW_URL" LANGFLOW_URL
         prompt_with_default "Supabase API URL" "$SUPABASE_PUBLIC_URL" SUPABASE_PUBLIC_URL
         prompt_with_default "Supabase Studio URL" "$SITE_URL" SITE_URL
         API_EXTERNAL_URL="$SUPABASE_PUBLIC_URL"
     fi
-
-    # Production confirmation
-    whiptail --title "Production URLs Configured" \
-             --msgbox "\n✓ Production URLs configured!\n\n  Open WebUI:      ${OPEN_WEBUI_URL}\n  Langflow:        ${LANGFLOW_URL}\n  Supabase API:    ${SUPABASE_PUBLIC_URL}\n  Supabase Studio: ${SITE_URL}\n\nRemember to configure your reverse proxy (nginx/Caddy) to route these domains to Docker." \
-             16 70
 else
     PRODUCTION=false
     OPEN_WEBUI_URL="http://localhost:8080"
@@ -437,10 +424,6 @@ else
     SUPABASE_PUBLIC_URL="http://localhost:8000"
     API_EXTERNAL_URL="http://localhost:8000"
     SITE_URL="http://localhost:3001"
-
-    whiptail --title "Development Mode" \
-             --msgbox "\n✓ Using localhost URLs for development\n\n  Open WebUI:      ${OPEN_WEBUI_URL}\n  Langflow:        ${LANGFLOW_URL}\n  Supabase API:    ${SUPABASE_PUBLIC_URL}\n  Supabase Studio: ${SITE_URL}" \
-             14 70
 fi
 
 replace_env_value "OPEN_WEBUI_URL" "$OPEN_WEBUI_URL"
@@ -451,11 +434,7 @@ replace_env_value "SITE_URL" "$SITE_URL"
 
 CURRENT_STEP=2
 
-# Step 2 Introduction
-whiptail --title "Step 2 of $TOTAL_STEPS: Generating Secure Secrets" \
-         --msgbox "\nGenerating cryptographically secure secrets\n\nThe following secrets will be generated:\n  • JWT secrets for authentication\n  • Database passwords\n  • Encryption keys\n  • API tokens\n\nTotal: 13 unique secrets using OpenSSL" \
-         16 70
-
+# Step 2: Generate secrets
 secrets=(
     "JWT_SECRET:JWT Secret"
     "SERVICE_ROLE_KEY:Service Role Key"
@@ -505,18 +484,9 @@ counter=1
 # Set default app name
 replace_env_value "WEBUI_NAME" "Open WebUI"
 
-# Success message
-whiptail --title "Secrets Generated" \
-         --msgbox "\n✓ All secrets generated successfully!\n\n  Total: ${total_secrets} cryptographically secure secrets\n  Algorithm: OpenSSL random hex\n  Stored in: .env (permissions: 600)\n\nYour secrets are ready for deployment." \
-         14 70
-
 CURRENT_STEP=3
 
-# Step 3 Introduction
-whiptail --title "Step 3 of $TOTAL_STEPS: AI Model Backend Configuration" \
-         --msgbox "\nConfigure AI providers for your applications\n\nYou can configure multiple providers:\n\n  • Ollama - Self-hosted local models\n  • OpenAI - GPT-4, GPT-3.5, etc.\n  • Anthropic - Claude models\n  • OpenRouter - Multi-provider gateway\n\nThese API keys will be available to both Langflow and Open WebUI." \
-         18 70
-
+# Step 3: AI Providers
 # Ollama
 if prompt_yes_no "Configure Ollama? (Local Models)" "n"; then
     prompt_with_default "Ollama URL" "http://host.docker.internal:11434" OLLAMA_URL
@@ -547,28 +517,9 @@ if prompt_yes_no "Configure OpenRouter? (Multi-Provider Gateway)" "n"; then
     fi
 fi
 
-# Show summary of configured providers
-AI_SUMMARY=""
-[ -n "$OLLAMA_URL" ] && AI_SUMMARY="${AI_SUMMARY}  ✓ Ollama: ${OLLAMA_URL}\n"
-[ -n "$OPENAI_KEY" ] && AI_SUMMARY="${AI_SUMMARY}  ✓ OpenAI configured\n"
-[ -n "$ANTHROPIC_KEY" ] && AI_SUMMARY="${AI_SUMMARY}  ✓ Anthropic configured\n"
-[ -n "$OPENROUTER_KEY" ] && AI_SUMMARY="${AI_SUMMARY}  ✓ OpenRouter configured\n"
-
-if [ -z "$AI_SUMMARY" ]; then
-    AI_SUMMARY="  No AI providers configured.\n  You can add API keys manually in .env file."
-fi
-
-whiptail --title "AI Providers Configured" \
-         --msgbox "\nAI Provider Configuration Complete\n\n${AI_SUMMARY}" \
-         14 70
-
 CURRENT_STEP=4
 
-# Step 4 Introduction
-whiptail --title "Step 4 of $TOTAL_STEPS: SMTP Configuration" \
-         --msgbox "\nConfigure SMTP for email notifications (Optional)\n\nSMTP enables:\n  • Password reset emails\n  • User invitations\n  • System notifications\n\nCommon providers:\n  • Gmail: smtp.gmail.com:587\n  • Outlook: smtp-mail.outlook.com:587\n  • SendGrid, Mailgun, etc." \
-         18 70
-
+# Step 4: SMTP
 if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
     prompt_with_default "SMTP Host" "smtp.gmail.com" SMTP_HOST
 
@@ -609,31 +560,14 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
     replace_env_value "SMTP_ADMIN_EMAIL" "$SMTP_ADMIN_EMAIL"
     replace_env_value "SMTP_SENDER_NAME" "$SMTP_SENDER_NAME"
     replace_env_value "SMTP_USE_TLS" "$SMTP_USE_TLS"
-
-    whiptail --title "SMTP Configured" \
-             --msgbox "\n✓ SMTP configured successfully!\n\nConfiguration:\n  Host: ${SMTP_HOST}:${SMTP_PORT}\n  Username: ${SMTP_USER}\n  From: ${SMTP_SENDER_NAME} <${SMTP_ADMIN_EMAIL}>\n  TLS: ${SMTP_USE_TLS}" \
-             14 70
-else
-    whiptail --title "SMTP Skipped" \
-             --msgbox "\nSMTP configuration skipped.\n\nEmail notifications will be disabled." \
-             10 50
 fi
 
 CURRENT_STEP=5
 
-# Step 5 Introduction
-whiptail --title "Step 5 of $TOTAL_STEPS: OAuth/OIDC Configuration" \
-         --msgbox "\nConfigure Single Sign-On (SSO) with OAuth/OIDC providers\n\nSupported Providers:\n  • Authentik\n  • Keycloak\n  • Google Workspace\n  • Azure AD / Entra ID\n  • Generic OpenID Connect providers\n\nOAuth enables users to sign in with existing accounts instead of creating new credentials." \
-         18 70
-
+# Step 5: OAuth/OIDC
 OAUTH_CONFIGURED=false
 if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     OAUTH_CONFIGURED=true
-
-    # Show OAuth Provider Settings info
-    whiptail --title "OAuth Provider Settings" \
-             --msgbox "\nEnter your OAuth provider's base URL\n\nExamples:\n  • Authentik: https://auth.yourdomain.com\n  • Keycloak: https://keycloak.yourdomain.com/realms/myrealm\n  • Google: https://accounts.google.com\n  • Azure AD: https://login.microsoftonline.com/{tenant-id}" \
-             16 70
 
     while true; do
         prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
@@ -645,24 +579,13 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
         fi
     done
 
-    # Open WebUI OAuth Configuration
     prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
     replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
-
-    # Show OpenID Configuration info
-    whiptail --title "OpenID Configuration" \
-             --msgbox "\nEnter your OpenID Provider URL (discovery endpoint)\n\nExamples:\n  • Authentik:\n    ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration\n\n  • Keycloak:\n    Include realm in base URL (already configured above)\n\n  • Google:\n    https://accounts.google.com/.well-known/openid-configuration" \
-             18 70
 
     prompt_with_default "OpenID Provider URL (leave empty if using base URL)" "" OPENID_URL
     if [ -n "$OPENID_URL" ]; then
         replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
     fi
-
-    # Show Client Credentials info
-    whiptail --title "Client Credentials" \
-             --msgbox "\nEnter your OAuth application credentials\n\nYou'll need to create an OAuth application in your provider with:\n\n  Redirect URI:\n  ${OPEN_WEBUI_URL}/oauth/oidc/callback\n\nThen enter the Client ID and Secret here." \
-             16 70
 
     prompt_with_default "OAuth Client ID" "" OAUTH_CLIENT_ID
     replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OAUTH_CLIENT_ID"
@@ -676,25 +599,11 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     replace_env_value "OAUTH_MERGE_ACCOUNTS_BY_EMAIL" "true"
     replace_env_value "OAUTH_SCOPES" "openid email profile"
     replace_env_value "ENABLE_PASSWORD_AUTH" "true"
-
-    # Success message
-    whiptail --title "OAuth Configuration Complete" \
-             --msgbox "\n✓ OAuth/OIDC configured successfully!\n\nConfiguration:\n  Provider: ${OAUTH_NAME}\n  URL: ${OAUTH_URL}\n  Client ID: ${OAUTH_CLIENT_ID}\n\nLocal password authentication remains enabled as a fallback." \
-             14 70
-else
-    whiptail --title "OAuth Skipped" \
-             --msgbox "\nOAuth configuration skipped.\n\nUsers will authenticate with local accounts only." \
-             10 60
 fi
 
 CURRENT_STEP=6
 
-# Step 6 Introduction
-whiptail --title "Step 6 of $TOTAL_STEPS: Meilisearch Configuration" \
-         --msgbox "\nMeilisearch - Fast Document Search Engine\n\nMeilisearch is a core component of the stack:\n  • Lightning-fast full-text search\n  • Typo-tolerance and fuzzy matching\n  • Seamless integration with Open WebUI\n\nScrapix Integration:\n  • Automatically scrape and index documentation\n  • Pre-configured for popular AI docs\n  • Customizable site list" \
-         18 70
-
-# Meilisearch is always configured as a core component
+# Step 6: Meilisearch & Scrapix
 MEILISEARCH_CONFIGURED=true
 
 if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
@@ -786,29 +695,12 @@ if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
   "additional_request_headers": {}
 }
 EOF
-
-            whiptail --title "Scrapix Configured" \
-                     --msgbox "\n✓ Created scrapix.config.json\n\nIndexed sites:\n${URLS_DISPLAY}\n\nYou can edit scrapix.config.json to modify URLs later." \
-                     18 70
         fi
-    else
-        whiptail --title "Scrapix Skipped" \
-                 --msgbox "\nScrapix configuration skipped.\n\nYou can manually create scrapix.config.json later to index documentation sites.\n\nTemplate available: scrapix.config.json.template" \
-                 12 60
-    fi
-
-# Show Meilisearch usage instructions
-whiptail --title "Meilisearch Configured" \
-         --msgbox "\n✓ Meilisearch is configured as a core component!\n\nAccess:\n  Web Interface: http://localhost:7700\n  Master Key: Auto-generated in .env\n\nTo use in Open WebUI:\n  1. Start: docker compose up -d\n  2. Index docs: docker compose run scrapix\n  3. Import tool: Admin → Tools → Import\n  4. Upload: volumes/open-webui/tools/meilisearch_search.py\n\nThe tool auto-configures from environment variables." \
-         20 70
+fi
 
 CURRENT_STEP=7
 
-# Step 7 Introduction
-whiptail --title "Step 7 of $TOTAL_STEPS: Generating Configuration" \
-         --msgbox "\nGenerating docker-compose.override.yml\n\nThis file configures:\n  • AI provider environment variables\n  • OAuth/OIDC integration\n  • Supabase connection settings\n  • Meilisearch integration\n  • Optional PostgreSQL for Open WebUI\n\nDocker Compose will automatically merge this with the base configuration." \
-         18 70
-
+# Step 7: Generate docker-compose.override.yml
 # Build override file content
 OVERRIDE_CONTENT="# Auto-generated by setup.sh\n"
 OVERRIDE_CONTENT+="# Optional configurations for AI providers, OAuth, and integrations\n\n"
@@ -914,10 +806,6 @@ if [ "$SKIP_OVERRIDE" != true ]; then
 
     # Write the override file
     echo -e "$OVERRIDE_CONTENT" > docker-compose.override.yml
-
-    whiptail --title "Configuration Generated" \
-             --msgbox "\n✓ docker-compose.override.yml created!\n\nConfiguration includes:\n  • AI provider environment variables\n  • Supabase integration\n  • Meilisearch integration (core)\n  • Open WebUI database: ${OPENWEBUI_DB}\n$([ \"$OAUTH_CONFIGURED\" = true ] && echo \"  • OAuth/OIDC configuration\")\n\nDocker Compose will merge this with docker-compose.yml on startup." \
-             16 70
 fi
 
 # Set proper permissions
