@@ -66,6 +66,11 @@ print_step_header() {
     echo ""
 }
 
+print_subsection() {
+    echo ""
+    echo -e "${DIM}┌─ $1${NC}"
+}
+
 print_info() {
     echo -e "${BLUE}ℹ${NC}  $1"
 }
@@ -84,6 +89,16 @@ print_error() {
 
 print_separator() {
     echo -e "${GRAY}─────────────────────────────────────────────────────────────${NC}"
+}
+
+print_prompt() {
+    echo -e "${CYAN}▸${NC} $1"
+}
+
+print_config_item() {
+    local label=$1
+    local value=$2
+    echo -e "  ${DIM}${label}:${NC} ${WHITE}${value}${NC}"
 }
 
 # Pre-flight checks
@@ -256,16 +271,22 @@ validate_port() {
 print_step_header 1 "OAuth/OIDC Configuration (Optional)"
 
 print_info "Configure Single Sign-On (SSO) with OAuth/OIDC providers"
-echo "  (Authentik, Keycloak, Google, Azure AD, etc.)"
+echo "  ${DIM}Supported: Authentik, Keycloak, Google, Azure AD, etc.${NC}"
 echo ""
 
 OAUTH_CONFIGURED=false
 if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     OAUTH_CONFIGURED=true
     echo ""
-    echo "Examples: https://auth.yourdomain.com, https://keycloak.yourdomain.com/realms/myrealm"
+    print_subsection "OAuth Provider Settings"
+    echo ""
+    echo "  ${DIM}Examples:${NC}"
+    echo "  ${DIM}• https://auth.yourdomain.com${NC}"
+    echo "  ${DIM}• https://keycloak.yourdomain.com/realms/myrealm${NC}"
+    echo ""
     while true; do
-        prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
+        print_prompt "OAuth Provider Base URL"
+        prompt_with_default "" "http://localhost:9000" OAUTH_URL
         if validate_url "$OAUTH_URL"; then
             replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
             break
@@ -276,25 +297,32 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
 
     # Open WebUI OAuth Configuration
     echo ""
-    prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
+    print_prompt "OAuth Provider Name (shown to users)"
+    prompt_with_default "" "SSO" OAUTH_NAME
     replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
 
     echo ""
-    echo "OpenID Provider URL examples:"
-    echo "  Authentik: ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration"
-    echo "  Keycloak: Include realm in base URL above"
+    print_subsection "OpenID Configuration"
     echo ""
-    prompt_with_default "OpenID Provider URL" "" OPENID_URL
+    echo "  ${DIM}Examples:${NC}"
+    echo "  ${DIM}• Authentik: ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration${NC}"
+    echo "  ${DIM}• Keycloak: Include realm in base URL above${NC}"
+    echo ""
+    print_prompt "OpenID Provider URL"
+    prompt_with_default "" "" OPENID_URL
     if [ -n "$OPENID_URL" ]; then
         replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
     fi
 
     echo ""
-    prompt_with_default "OAuth Client ID" "" OAUTH_CLIENT_ID
+    print_subsection "Client Credentials"
+    echo ""
+    print_prompt "OAuth Client ID"
+    prompt_with_default "" "" OAUTH_CLIENT_ID
     replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OAUTH_CLIENT_ID"
 
     echo ""
-    echo "Enter OAuth Client Secret:"
+    print_prompt "OAuth Client Secret (hidden)"
     read -s OAUTH_CLIENT_SECRET
     echo ""
     replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OAUTH_CLIENT_SECRET"
@@ -306,9 +334,10 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     replace_env_value "OAUTH_SCOPES" "openid email profile"
     replace_env_value "ENABLE_PASSWORD_AUTH" "true"
 
-    print_success "OAuth/OIDC configured"
+    echo ""
+    print_success "OAuth/OIDC configured successfully"
 else
-    print_info "Skipping OAuth configuration - local authentication only"
+    print_info "Skipping OAuth configuration - using local authentication only"
 fi
 echo ""
 
@@ -329,11 +358,12 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     SITE_URL="https://db-admin.${DOMAIN}"
 
     echo ""
-    echo "Auto-configured URLs:"
-    echo "  Open WebUI:       $OPEN_WEBUI_URL"
-    echo "  Langflow:         $LANGFLOW_URL"
-    echo "  Supabase API:     $SUPABASE_PUBLIC_URL"
-    echo "  Supabase Studio:  $SITE_URL"
+    print_info "Auto-configured URLs:"
+    echo ""
+    print_config_item "Open WebUI      " "$OPEN_WEBUI_URL"
+    print_config_item "Langflow        " "$LANGFLOW_URL"
+    print_config_item "Supabase API    " "$SUPABASE_PUBLIC_URL"
+    print_config_item "Supabase Studio " "$SITE_URL"
     echo ""
 
     if prompt_yes_no "Customize these URLs?" "n"; then
@@ -367,18 +397,20 @@ print_info "Configure AI providers (you can configure multiple)"
 echo ""
 
 # Ollama
-if prompt_yes_no "Configure Ollama (local)?" "n"; then
+print_subsection "Ollama (Local Models)"
+if prompt_yes_no "Configure Ollama?" "n"; then
     echo ""
-    prompt_with_default "Ollama URL" "http://host.docker.internal:11434" OLLAMA_URL
+    print_prompt "Ollama URL"
+    prompt_with_default "" "http://host.docker.internal:11434" OLLAMA_URL
     replace_env_value "OLLAMA_BASE_URL" "$OLLAMA_URL"
     print_success "Ollama configured"
 fi
-echo ""
 
 # OpenAI
+print_subsection "OpenAI"
 if prompt_yes_no "Configure OpenAI?" "n"; then
     echo ""
-    echo "Enter your OpenAI API key (starts with sk-):"
+    print_prompt "Enter your OpenAI API key (starts with sk-)"
     read -s OPENAI_KEY
     echo ""
     if [ -n "$OPENAI_KEY" ]; then
@@ -388,12 +420,12 @@ if prompt_yes_no "Configure OpenAI?" "n"; then
         print_warning "No API key entered"
     fi
 fi
-echo ""
 
 # Anthropic
+print_subsection "Anthropic (Claude)"
 if prompt_yes_no "Configure Anthropic?" "n"; then
     echo ""
-    echo "Enter your Anthropic API key (starts with sk-ant-):"
+    print_prompt "Enter your Anthropic API key (starts with sk-ant-)"
     read -s ANTHROPIC_KEY
     echo ""
     if [ -n "$ANTHROPIC_KEY" ]; then
@@ -403,12 +435,12 @@ if prompt_yes_no "Configure Anthropic?" "n"; then
         print_warning "No API key entered"
     fi
 fi
-echo ""
 
 # OpenRouter
+print_subsection "OpenRouter (Multi-Provider)"
 if prompt_yes_no "Configure OpenRouter?" "n"; then
     echo ""
-    echo "Enter your OpenRouter API key (starts with sk-or-):"
+    print_prompt "Enter your OpenRouter API key (starts with sk-or-)"
     read -s OPENROUTER_KEY
     echo ""
     if [ -n "$OPENROUTER_KEY" ]; then
@@ -492,20 +524,24 @@ secrets=(
     "MEILI_MASTER_KEY:Meilisearch Master Key"
 )
 
+total_secrets=$((${#secrets[@]} + 1))
 counter=1
+
 for secret_pair in "${secrets[@]}"; do
     IFS=':' read -r key name <<< "$secret_pair"
     value=$(generate_secret)
     replace_env_value "$key" "$value"
-    echo -e "  ${counter}. ${GREEN}✓${NC} $name"
+    echo -e "  ${DIM}[${counter}/${total_secrets}]${NC} ${GREEN}✓${NC} $name"
     ((counter++))
 done
 
 echo ""
-print_info "Generating SECRET_KEY_BASE (64 chars)..."
 SECRET_KEY_BASE=$(generate_long_secret 64)
 replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
-echo -e "  13. ${GREEN}✓${NC} Secret Key Base"
+echo -e "  ${DIM}[${counter}/${total_secrets}]${NC} ${GREEN}✓${NC} Secret Key Base (64 chars)"
+echo ""
+
+print_success "All secrets generated securely"
 echo ""
 
 # Set default app name
@@ -547,14 +583,15 @@ if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
 
     echo ""
     print_success "Meilisearch configured"
-    echo "   Access Meilisearch at http://localhost:7700"
-    echo "   Run 'docker compose run scrapix' to index documentation"
+    echo ""
+    print_config_item "Web Interface" "http://localhost:7700"
+    print_config_item "Index Command" "docker compose run scrapix"
     echo ""
     print_info "To use Meilisearch in Open WebUI:"
-    echo "   1. Start the stack: docker compose up -d"
-    echo "   2. Import the tool: Admin Panel → Tools → Import Tool"
-    echo "   3. Upload: volumes/open-webui/tools/meilisearch_search.py"
-    echo "   4. The tool will auto-configure from environment variables"
+    echo "   ${DIM}1.${NC} Start the stack: ${DIM}docker compose up -d${NC}"
+    echo "   ${DIM}2.${NC} Import the tool: ${DIM}Admin Panel → Tools → Import Tool${NC}"
+    echo "   ${DIM}3.${NC} Upload: ${DIM}volumes/open-webui/tools/meilisearch_search.py${NC}"
+    echo "   ${DIM}4.${NC} The tool will auto-configure from environment variables"
     MEILISEARCH_CONFIGURED=true
 else
     print_info "Skipping Meilisearch configuration"
@@ -689,54 +726,91 @@ echo -e "${GREEN}${BOLD}╔═════════════════�
 echo -e "${GREEN}${BOLD}║                    ✓ Setup Complete!                     ║${NC}"
 echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "Your .env file has been created with:"
-echo "  • 12 secure secrets (auto-generated)"
-echo "  • Service URLs configured"
-echo "  • AI backend configured"
+
+# Configuration Summary
+echo -e "${CYAN}${BOLD}Configuration Summary${NC}"
+echo ""
+print_config_item "Secrets Generated   " "13 cryptographically secure keys"
+print_config_item "Environment File    " ".env (permissions: 600)"
+
 if [ "$PRODUCTION" = true ]; then
-    echo "  • Production URLs set"
+    print_config_item "Deployment Mode     " "Production (${DOMAIN})"
+else
+    print_config_item "Deployment Mode     " "Development (localhost)"
 fi
+
+if [ "$OAUTH_CONFIGURED" = true ]; then
+    print_config_item "Authentication      " "OAuth/OIDC + Local"
+else
+    print_config_item "Authentication      " "Local only"
+fi
+
+# Count configured AI providers
+AI_PROVIDERS=""
+[ -n "$OLLAMA_URL" ] && AI_PROVIDERS="${AI_PROVIDERS}Ollama, "
+[ -n "$OPENAI_KEY" ] && AI_PROVIDERS="${AI_PROVIDERS}OpenAI, "
+[ -n "$ANTHROPIC_KEY" ] && AI_PROVIDERS="${AI_PROVIDERS}Anthropic, "
+[ -n "$OPENROUTER_KEY" ] && AI_PROVIDERS="${AI_PROVIDERS}OpenRouter, "
+AI_PROVIDERS=${AI_PROVIDERS%, }
+if [ -n "$AI_PROVIDERS" ]; then
+    print_config_item "AI Providers        " "$AI_PROVIDERS"
+else
+    print_config_item "AI Providers        " "None (configure manually)"
+fi
+
 if [ -n "$SMTP_HOST" ]; then
-    echo "  • SMTP configured"
+    print_config_item "Email Notifications " "Enabled (${SMTP_HOST})"
+else
+    print_config_item "Email Notifications " "Disabled"
 fi
+
+if [ "$MEILISEARCH_CONFIGURED" = true ]; then
+    print_config_item "Document Search     " "Meilisearch enabled"
+else
+    print_config_item "Document Search     " "Not configured"
+fi
+
 if [ -f docker-compose.override.yml ] && [ "$SKIP_OVERRIDE" != true ]; then
-    echo "  • docker-compose.override.yml created with optional configs"
+    print_config_item "Override File       " "docker-compose.override.yml created"
 fi
+
 echo ""
 print_separator
 echo ""
-echo -e "${CYAN}${BOLD}NEXT STEPS${NC}"
+echo -e "${CYAN}${BOLD}Next Steps${NC}"
 echo ""
-echo -e "${WHITE}1.${NC} Download required Supabase files:"
-echo "   See README.md 'Create Required Supabase Files' section"
+echo -e "${YELLOW}▸${NC} ${BOLD}1. Download Supabase Files${NC}"
+echo "   ${DIM}See README.md 'Create Required Supabase Files' section${NC}"
 echo ""
-echo -e "${WHITE}2.${NC} Start the stack:"
-echo -e "   ${DIM}docker compose up -d${NC}"
+echo -e "${YELLOW}▸${NC} ${BOLD}2. Start the Stack${NC}"
+echo "   ${CYAN}docker compose up -d${NC}"
 echo ""
 if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-    echo -e "${WHITE}3.${NC} Index documentation (optional):"
-    echo -e "   ${DIM}docker compose run scrapix${NC}"
+    echo -e "${YELLOW}▸${NC} ${BOLD}3. Index Documentation${NC} ${DIM}(optional)${NC}"
+    echo "   ${CYAN}docker compose run scrapix${NC}"
     echo ""
 fi
-echo -e "${WHITE}$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3").${NC} Access services:"
-echo "   • Open WebUI:      $OPEN_WEBUI_URL"
-echo "   • Langflow:        $LANGFLOW_URL"
-echo "   • Supabase Studio: $SITE_URL"
-echo "   • Supabase API:    $SUPABASE_PUBLIC_URL"
+echo -e "${YELLOW}▸${NC} ${BOLD}$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3"). Access Your Services${NC}"
+echo ""
+print_config_item "Open WebUI      " "$OPEN_WEBUI_URL"
+print_config_item "Langflow        " "$LANGFLOW_URL"
+print_config_item "Supabase Studio " "$SITE_URL"
+print_config_item "Supabase API    " "$SUPABASE_PUBLIC_URL"
 if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-    echo "   • Meilisearch:     http://localhost:7700"
+    print_config_item "Meilisearch     " "http://localhost:7700"
 fi
 if [ "$OAUTH_CONFIGURED" = true ]; then
-    echo "   • OAuth Provider:  $OAUTH_URL"
+    print_config_item "OAuth Provider  " "$OAUTH_URL"
 fi
 echo ""
 print_separator
 echo ""
-echo -e "${MAGENTA}📚 Documentation${NC}"
-echo "   • Full guide:        README.md"
-echo "   • Authentik setup:   EXTERNAL_AUTHENTIK_SETUP.md"
-echo "   • Quick reference:   QUICK_REFERENCE.md"
-echo "   • Troubleshooting:   TROUBLESHOOTING.md"
+echo -e "${MAGENTA}${BOLD}📚 Documentation${NC}"
 echo ""
-print_success ".env file permissions set to 600 (secure)"
+print_config_item "Full Guide      " "README.md"
+print_config_item "Authentik Setup " "docs/EXTERNAL_AUTHENTIK_SETUP.md"
+print_config_item "Quick Reference " "docs/QUICK_REFERENCE.md"
+print_config_item "Troubleshooting " "docs/TROUBLESHOOTING.md"
+echo ""
+print_success "Setup completed successfully!"
 echo ""
