@@ -25,6 +25,16 @@ BOLD='\033[1m'
 DIM='\033[2m'
 UNDERLINE='\033[4m'
 
+# Icons for status messages
+CHECKMARK="✓"
+CROSS="✗"
+INFO="ℹ"
+WARNING="⚠"
+ROCKET="🚀"
+SPARKLES="✨"
+PARTY="🎉"
+BOOKS="📚"
+
 # Box drawing characters
 BOX_H="━"
 BOX_V="┃"
@@ -44,6 +54,12 @@ CURRENT_STEP=0
 # Terminal dimensions
 TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
 TERM_HEIGHT=$(tput lines 2>/dev/null || echo 24)
+
+# Check for whiptail availability
+HAS_WHIPTAIL=false
+if command -v whiptail &> /dev/null; then
+    HAS_WHIPTAIL=true
+fi
 
 # Center text function
 center_text() {
@@ -132,19 +148,36 @@ print_step_complete() {
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ${NC}  $1"
+    echo -e "${BLUE}${INFO}${NC}  $1"
 }
 
 print_success() {
-    echo -e "${GREEN}✓${NC}  $1"
+    echo -e "${GREEN}${CHECKMARK}${NC}  $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${NC}  $1"
+    echo -e "${YELLOW}${WARNING}${NC}  $1"
 }
 
 print_error() {
-    echo -e "${RED}✗${NC}  $1"
+    echo -e "${RED}${CROSS}${NC}  $1"
+}
+
+# Enhanced message functions (Proxmox-style)
+msg_info() {
+    echo -ne " ${BLUE}${INFO}${NC} ${BOLD}$1${NC}"
+}
+
+msg_ok() {
+    echo -e " ${GREEN}${CHECKMARK}${NC} ${BOLD}$1${NC}"
+}
+
+msg_error() {
+    echo -e " ${RED}${CROSS}${NC} ${BOLD}$1${NC}"
+}
+
+msg_warn() {
+    echo -e " ${YELLOW}${WARNING}${NC} ${BOLD}$1${NC}"
 }
 
 print_separator() {
@@ -159,6 +192,24 @@ print_config_item() {
     local label=$1
     local value=$2
     echo -e "  ${DIM}${label}:${NC} ${WHITE}${value}${NC}"
+}
+
+# Spinner for long operations (Proxmox-style)
+show_spinner() {
+    local pid=$1
+    local message=$2
+    local spin='-\|/'
+    local i=0
+
+    echo -ne " ${BLUE}${INFO}${NC} ${BOLD}${message}${NC} "
+
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) %4 ))
+        echo -ne "\r ${BLUE}${INFO}${NC} ${BOLD}${message}${NC} ${spin:$i:1}"
+        sleep 0.1
+    done
+
+    echo -ne "\r"
 }
 
 # Show main header
@@ -288,15 +339,58 @@ prompt_with_default() {
     local prompt=$1
     local default=$2
     local varname=$3
-    
-    if [ -n "$default" ]; then
-        read -p "$prompt [$default]: " value
-        value=${value:-$default}
+
+    if [ "$HAS_WHIPTAIL" = true ]; then
+        # Use whiptail inputbox
+        local result
+        result=$(whiptail --title "AI Tool Server Stack" \
+                         --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
+                         --inputbox "$prompt" \
+                         10 70 \
+                         "$default" \
+                         3>&1 1>&2 2>&3)
+
+        # If user cancelled, use default
+        if [ $? -eq 0 ]; then
+            eval $varname="'$result'"
+        else
+            eval $varname="'$default'"
+        fi
     else
-        read -p "$prompt: " value
+        # Fallback to standard prompt
+        if [ -n "$default" ]; then
+            read -p "$prompt [$default]: " value
+            value=${value:-$default}
+        else
+            read -p "$prompt: " value
+        fi
+
+        eval $varname="'$value'"
     fi
-    
-    eval $varname="'$value'"
+}
+
+# Function to prompt for password/secret
+prompt_password() {
+    local prompt=$1
+    local varname=$2
+
+    if [ "$HAS_WHIPTAIL" = true ]; then
+        # Use whiptail passwordbox
+        local result
+        result=$(whiptail --title "AI Tool Server Stack" \
+                         --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
+                         --passwordbox "$prompt" \
+                         10 70 \
+                         3>&1 1>&2 2>&3)
+
+        eval $varname="'$result'"
+    else
+        # Fallback to standard prompt
+        echo "$prompt"
+        read -s value
+        echo ""
+        eval $varname="'$value'"
+    fi
 }
 
 # Function to prompt for yes/no
@@ -304,17 +398,36 @@ prompt_yes_no() {
     local prompt=$1
     local default=$2
 
-    if [ "$default" = "y" ]; then
-        read -p "$prompt (Y/n): " -n 1 -r
-    else
-        read -p "$prompt (y/N): " -n 1 -r
-    fi
-    echo
+    if [ "$HAS_WHIPTAIL" = true ]; then
+        # Use whiptail for a nicer dialog
+        local default_item=""
+        if [ "$default" = "y" ]; then
+            default_item="--defaultno"
+        fi
 
-    if [ "$default" = "y" ]; then
-        [[ ! $REPLY =~ ^[Nn]$ ]]
+        if whiptail --title "AI Tool Server Stack" \
+                    --backtitle "Step $CURRENT_STEP of $TOTAL_STEPS" \
+                    --yesno "$prompt" \
+                    10 70 \
+                    $default_item 3>&1 1>&2 2>&3; then
+            return 0
+        else
+            return 1
+        fi
     else
-        [[ $REPLY =~ ^[Yy]$ ]]
+        # Fallback to standard prompt
+        if [ "$default" = "y" ]; then
+            read -p "$prompt (Y/n): " -n 1 -r
+        else
+            read -p "$prompt (y/N): " -n 1 -r
+        fi
+        echo
+
+        if [ "$default" = "y" ]; then
+            [[ ! $REPLY =~ ^[Nn]$ ]]
+        else
+            [[ $REPLY =~ ^[Yy]$ ]]
+        fi
     fi
 }
 
@@ -402,9 +515,7 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OAUTH_CLIENT_ID"
 
     echo ""
-    print_prompt "OAuth Client Secret (hidden)"
-    read -s OAUTH_CLIENT_SECRET
-    echo ""
+    prompt_password "OAuth Client Secret" OAUTH_CLIENT_SECRET
     replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OAUTH_CLIENT_SECRET"
 
     # Set sensible OAuth defaults
@@ -492,9 +603,7 @@ fi
 print_subsection "OpenAI"
 if prompt_yes_no "Configure OpenAI?" "n"; then
     echo ""
-    print_prompt "Enter your OpenAI API key (starts with sk-)"
-    read -s OPENAI_KEY
-    echo ""
+    prompt_password "OpenAI API Key (starts with sk-)" OPENAI_KEY
     if [ -n "$OPENAI_KEY" ]; then
         replace_env_value "OPENAI_API_KEY" "$OPENAI_KEY"
         print_success "OpenAI configured"
@@ -507,9 +616,7 @@ fi
 print_subsection "Anthropic (Claude)"
 if prompt_yes_no "Configure Anthropic?" "n"; then
     echo ""
-    print_prompt "Enter your Anthropic API key (starts with sk-ant-)"
-    read -s ANTHROPIC_KEY
-    echo ""
+    prompt_password "Anthropic API Key (starts with sk-ant-)" ANTHROPIC_KEY
     if [ -n "$ANTHROPIC_KEY" ]; then
         replace_env_value "ANTHROPIC_API_KEY" "$ANTHROPIC_KEY"
         print_success "Anthropic configured"
@@ -522,9 +629,7 @@ fi
 print_subsection "OpenRouter (Multi-Provider)"
 if prompt_yes_no "Configure OpenRouter?" "n"; then
     echo ""
-    print_prompt "Enter your OpenRouter API key (starts with sk-or-)"
-    read -s OPENROUTER_KEY
-    echo ""
+    prompt_password "OpenRouter API Key (starts with sk-or-)" OPENROUTER_KEY
     if [ -n "$OPENROUTER_KEY" ]; then
         replace_env_value "OPENROUTER_API_KEY" "$OPENROUTER_KEY"
         print_success "OpenRouter configured"
@@ -552,9 +657,7 @@ if prompt_yes_no "Configure SMTP for email notifications?" "n"; then
 
     prompt_with_default "SMTP Username" "" SMTP_USER
 
-    echo "SMTP Password:"
-    read -s SMTP_PASS
-    echo ""
+    prompt_password "SMTP Password" SMTP_PASS
 
     while true; do
         prompt_with_default "From Email Address" "$SMTP_USER" SMTP_ADMIN_EMAIL
