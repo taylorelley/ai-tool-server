@@ -948,3 +948,29 @@ DOCS+="Thank you for using AI Tool Server Stack!"
 whiptail --title "Documentation 📚" \
          --msgbox "$DOCS" \
          22 70
+
+# Ask if user wants to start the stack
+if whiptail --title "Start the Stack?" \
+            --yesno "\nWould you like to start the AI Tool Server Stack now?\n\nThis will run: docker compose up -d\n\nThe services will start in the background." \
+            12 60; then
+
+    # Show starting message
+    whiptail --title "Starting Stack" \
+             --msgbox "\nStarting Docker Compose stack...\n\nThis may take a few moments." \
+             10 50
+
+    # Run docker compose up -d
+    if docker compose up -d; then
+        whiptail --title "Stack Started! 🚀" \
+                 --msgbox "\n✓ AI Tool Server Stack is now running!\n\nYour services are starting up:\n\n  Open WebUI:      ${OPEN_WEBUI_URL}\n  Langflow:        ${LANGFLOW_URL}\n  Supabase Studio: ${SITE_URL}\n\nNote: Services may take 1-2 minutes to fully initialize.\n\nCheck status: docker compose ps\nView logs: docker compose logs -f" \
+                 18 70
+    else
+        whiptail --title "Error Starting Stack" \
+                 --msgbox "\n✗ Failed to start Docker Compose stack.\n\nPlease check the error messages above and try:\n  docker compose up -d\n\nCommon issues:\n  • Docker daemon not running\n  • Port conflicts\n  • Missing Supabase files\n\nSee docs/TROUBLESHOOTING.md for help." \
+                 16 70
+    fi
+else
+    whiptail --title "Setup Complete" \
+             --msgbox "\nSetup complete!\n\nWhen you're ready to start the stack, run:\n  docker compose up -d\n\nSee README.md for next steps." \
+             12 60
+fi
