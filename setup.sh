@@ -351,7 +351,7 @@ prompt_yes_no() {
     local default=$2
 
     local default_item=""
-    if [ "$default" = "y" ]; then
+    if [ "$default" = "n" ]; then
         default_item="--defaultno"
     fi
 
