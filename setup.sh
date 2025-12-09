@@ -271,7 +271,7 @@ validate_port() {
 print_step_header 1 "OAuth/OIDC Configuration (Optional)"
 
 print_info "Configure Single Sign-On (SSO) with OAuth/OIDC providers"
-echo "  ${DIM}Supported: Authentik, Keycloak, Google, Azure AD, etc.${NC}"
+echo -e "  ${DIM}Supported: Authentik, Keycloak, Google, Azure AD, etc.${NC}"
 echo ""
 
 OAUTH_CONFIGURED=false
@@ -280,9 +280,9 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     echo ""
     print_subsection "OAuth Provider Settings"
     echo ""
-    echo "  ${DIM}Examples:${NC}"
-    echo "  ${DIM}• https://auth.yourdomain.com${NC}"
-    echo "  ${DIM}• https://keycloak.yourdomain.com/realms/myrealm${NC}"
+    echo -e "  ${DIM}Examples:${NC}"
+    echo -e "  ${DIM}• https://auth.yourdomain.com${NC}"
+    echo -e "  ${DIM}• https://keycloak.yourdomain.com/realms/myrealm${NC}"
     echo ""
     while true; do
         print_prompt "OAuth Provider Base URL"
@@ -304,9 +304,9 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     echo ""
     print_subsection "OpenID Configuration"
     echo ""
-    echo "  ${DIM}Examples:${NC}"
-    echo "  ${DIM}• Authentik: ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration${NC}"
-    echo "  ${DIM}• Keycloak: Include realm in base URL above${NC}"
+    echo -e "  ${DIM}Examples:${NC}"
+    echo -e "  ${DIM}• Authentik: ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration${NC}"
+    echo -e "  ${DIM}• Keycloak: Include realm in base URL above${NC}"
     echo ""
     print_prompt "OpenID Provider URL"
     prompt_with_default "" "" OPENID_URL
@@ -588,10 +588,10 @@ if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
     print_config_item "Index Command" "docker compose run scrapix"
     echo ""
     print_info "To use Meilisearch in Open WebUI:"
-    echo "   ${DIM}1.${NC} Start the stack: ${DIM}docker compose up -d${NC}"
-    echo "   ${DIM}2.${NC} Import the tool: ${DIM}Admin Panel → Tools → Import Tool${NC}"
-    echo "   ${DIM}3.${NC} Upload: ${DIM}volumes/open-webui/tools/meilisearch_search.py${NC}"
-    echo "   ${DIM}4.${NC} The tool will auto-configure from environment variables"
+    echo -e "   ${DIM}1.${NC} Start the stack: ${DIM}docker compose up -d${NC}"
+    echo -e "   ${DIM}2.${NC} Import the tool: ${DIM}Admin Panel → Tools → Import Tool${NC}"
+    echo -e "   ${DIM}3.${NC} Upload: ${DIM}volumes/open-webui/tools/meilisearch_search.py${NC}"
+    echo -e "   ${DIM}4.${NC} The tool will auto-configure from environment variables"
     MEILISEARCH_CONFIGURED=true
 else
     print_info "Skipping Meilisearch configuration"
@@ -780,14 +780,14 @@ echo ""
 echo -e "${CYAN}${BOLD}Next Steps${NC}"
 echo ""
 echo -e "${YELLOW}▸${NC} ${BOLD}1. Download Supabase Files${NC}"
-echo "   ${DIM}See README.md 'Create Required Supabase Files' section${NC}"
+echo -e "   ${DIM}See README.md 'Create Required Supabase Files' section${NC}"
 echo ""
 echo -e "${YELLOW}▸${NC} ${BOLD}2. Start the Stack${NC}"
-echo "   ${CYAN}docker compose up -d${NC}"
+echo -e "   ${CYAN}docker compose up -d${NC}"
 echo ""
 if [ "$MEILISEARCH_CONFIGURED" = true ]; then
     echo -e "${YELLOW}▸${NC} ${BOLD}3. Index Documentation${NC} ${DIM}(optional)${NC}"
-    echo "   ${CYAN}docker compose run scrapix${NC}"
+    echo -e "   ${CYAN}docker compose run scrapix${NC}"
     echo ""
 fi
 echo -e "${YELLOW}▸${NC} ${BOLD}$([ "$MEILISEARCH_CONFIGURED" = true ] && echo "4" || echo "3"). Access Your Services${NC}"
