@@ -399,75 +399,7 @@ validate_port() {
 CURRENT_STEP=1
 
 # Step 1 Introduction
-whiptail --title "Step 1 of $TOTAL_STEPS: OAuth/OIDC Configuration" \
-         --msgbox "\nConfigure Single Sign-On (SSO) with OAuth/OIDC providers\n\nSupported Providers:\n  • Authentik\n  • Keycloak\n  • Google Workspace\n  • Azure AD / Entra ID\n  • Generic OpenID Connect providers\n\nOAuth enables users to sign in with existing accounts instead of creating new credentials." \
-         18 70
-
-OAUTH_CONFIGURED=false
-if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
-    OAUTH_CONFIGURED=true
-
-    # Show OAuth Provider Settings info
-    whiptail --title "OAuth Provider Settings" \
-             --msgbox "\nEnter your OAuth provider's base URL\n\nExamples:\n  • Authentik: https://auth.yourdomain.com\n  • Keycloak: https://keycloak.yourdomain.com/realms/myrealm\n  • Google: https://accounts.google.com\n  • Azure AD: https://login.microsoftonline.com/{tenant-id}" \
-             16 70
-
-    while true; do
-        prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
-        if validate_url "$OAUTH_URL"; then
-            replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
-            break
-        else
-            whiptail --title "Invalid URL" --msgbox "\nInvalid URL format. Please enter a valid URL starting with http:// or https://" 10 60
-        fi
-    done
-
-    # Open WebUI OAuth Configuration
-    prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
-    replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
-
-    # Show OpenID Configuration info
-    whiptail --title "OpenID Configuration" \
-             --msgbox "\nEnter your OpenID Provider URL (discovery endpoint)\n\nExamples:\n  • Authentik:\n    ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration\n\n  • Keycloak:\n    Include realm in base URL (already configured above)\n\n  • Google:\n    https://accounts.google.com/.well-known/openid-configuration" \
-             18 70
-
-    prompt_with_default "OpenID Provider URL (leave empty if using base URL)" "" OPENID_URL
-    if [ -n "$OPENID_URL" ]; then
-        replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
-    fi
-
-    # Show Client Credentials info
-    whiptail --title "Client Credentials" \
-             --msgbox "\nEnter your OAuth application credentials\n\nYou'll need to create an OAuth application in your provider with:\n\n  Redirect URI:\n  ${OPEN_WEBUI_URL}/oauth/oidc/callback\n\nThen enter the Client ID and Secret here." \
-             16 70
-
-    prompt_with_default "OAuth Client ID" "" OAUTH_CLIENT_ID
-    replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OAUTH_CLIENT_ID"
-
-    prompt_password "OAuth Client Secret" OAUTH_CLIENT_SECRET
-    replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OAUTH_CLIENT_SECRET"
-
-    # Set sensible OAuth defaults
-    replace_env_value "ENABLE_OAUTH_SIGNUP" "true"
-    replace_env_value "ENABLE_OAUTH_PERSISTENT_CONFIG" "true"
-    replace_env_value "OAUTH_MERGE_ACCOUNTS_BY_EMAIL" "true"
-    replace_env_value "OAUTH_SCOPES" "openid email profile"
-    replace_env_value "ENABLE_PASSWORD_AUTH" "true"
-
-    # Success message
-    whiptail --title "OAuth Configuration Complete" \
-             --msgbox "\n✓ OAuth/OIDC configured successfully!\n\nConfiguration:\n  Provider: ${OAUTH_NAME}\n  URL: ${OAUTH_URL}\n  Client ID: ${OAUTH_CLIENT_ID}\n\nLocal password authentication remains enabled as a fallback." \
-             14 70
-else
-    whiptail --title "OAuth Skipped" \
-             --msgbox "\nOAuth configuration skipped.\n\nUsers will authenticate with local accounts only." \
-             10 60
-fi
-
-CURRENT_STEP=2
-
-# Step 2 Introduction
-whiptail --title "Step 2 of $TOTAL_STEPS: Service URLs" \
+whiptail --title "Step 1 of $TOTAL_STEPS: Service URLs" \
          --msgbox "\nConfigure URLs for your services\n\nThis determines how users will access your tools:\n\n  Development Mode:\n  • Uses localhost URLs\n  • Good for testing and local development\n\n  Production Mode:\n  • Uses your custom domain\n  • Required for OAuth callbacks\n  • Requires reverse proxy (nginx, Caddy, Traefik)" \
          18 70
 
@@ -516,6 +448,67 @@ replace_env_value "LANGFLOW_URL" "$LANGFLOW_URL"
 replace_env_value "SUPABASE_PUBLIC_URL" "$SUPABASE_PUBLIC_URL"
 replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
+
+CURRENT_STEP=2
+
+# Step 2 Introduction
+whiptail --title "Step 2 of $TOTAL_STEPS: Generating Secure Secrets" \
+         --msgbox "\nGenerating cryptographically secure secrets\n\nThe following secrets will be generated:\n  • JWT secrets for authentication\n  • Database passwords\n  • Encryption keys\n  • API tokens\n\nTotal: 13 unique secrets using OpenSSL" \
+         16 70
+
+secrets=(
+    "JWT_SECRET:JWT Secret"
+    "SERVICE_ROLE_KEY:Service Role Key"
+    "ANON_KEY:Anonymous Key"
+    "WEBUI_SECRET_KEY:WebUI Secret Key"
+    "PG_META_CRYPTO_KEY:PG Meta Crypto Key"
+    "VAULT_ENC_KEY:Vault Encryption Key"
+    "LOGFLARE_PUBLIC_ACCESS_TOKEN:Logflare Public Token"
+    "LOGFLARE_PRIVATE_ACCESS_TOKEN:Logflare Private Token"
+    "POSTGRES_PASSWORD:PostgreSQL Password"
+    "LANGFLOW_DB_PASSWORD:Langflow DB Password"
+    "DASHBOARD_PASSWORD:Dashboard Password"
+    "MEILI_MASTER_KEY:Meilisearch Master Key"
+)
+
+total_secrets=$((${#secrets[@]} + 1))
+counter=1
+
+# Generate secrets with progress gauge
+{
+    for secret_pair in "${secrets[@]}"; do
+        IFS=':' read -r key name <<< "$secret_pair"
+        percentage=$((counter * 100 / total_secrets))
+        echo "$percentage"
+        echo "XXX"
+        echo "Generating secret $counter of $total_secrets:\n$name"
+        echo "XXX"
+
+        value=$(generate_secret)
+        replace_env_value "$key" "$value"
+        ((counter++))
+    done
+
+    # Generate SECRET_KEY_BASE (64 chars)
+    percentage=$((counter * 100 / total_secrets))
+    echo "$percentage"
+    echo "XXX"
+    echo "Generating secret $counter of $total_secrets:\nSecret Key Base (64 chars)"
+    echo "XXX"
+
+    SECRET_KEY_BASE=$(generate_long_secret 64)
+    replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
+
+    echo "100"
+} | whiptail --title "Generating Secrets" --gauge "Initializing secret generation..." 8 70 0
+
+# Set default app name
+replace_env_value "WEBUI_NAME" "Open WebUI"
+
+# Success message
+whiptail --title "Secrets Generated" \
+         --msgbox "\n✓ All secrets generated successfully!\n\n  Total: ${total_secrets} cryptographically secure secrets\n  Algorithm: OpenSSL random hex\n  Stored in: .env (permissions: 600)\n\nYour secrets are ready for deployment." \
+         14 70
 
 CURRENT_STEP=3
 
@@ -629,63 +622,70 @@ fi
 CURRENT_STEP=5
 
 # Step 5 Introduction
-whiptail --title "Step 5 of $TOTAL_STEPS: Generating Secure Secrets" \
-         --msgbox "\nGenerating cryptographically secure secrets\n\nThe following secrets will be generated:\n  • JWT secrets for authentication\n  • Database passwords\n  • Encryption keys\n  • API tokens\n\nTotal: 13 unique secrets using OpenSSL" \
-         16 70
+whiptail --title "Step 5 of $TOTAL_STEPS: OAuth/OIDC Configuration" \
+         --msgbox "\nConfigure Single Sign-On (SSO) with OAuth/OIDC providers\n\nSupported Providers:\n  • Authentik\n  • Keycloak\n  • Google Workspace\n  • Azure AD / Entra ID\n  • Generic OpenID Connect providers\n\nOAuth enables users to sign in with existing accounts instead of creating new credentials." \
+         18 70
 
-secrets=(
-    "JWT_SECRET:JWT Secret"
-    "SERVICE_ROLE_KEY:Service Role Key"
-    "ANON_KEY:Anonymous Key"
-    "WEBUI_SECRET_KEY:WebUI Secret Key"
-    "PG_META_CRYPTO_KEY:PG Meta Crypto Key"
-    "VAULT_ENC_KEY:Vault Encryption Key"
-    "LOGFLARE_PUBLIC_ACCESS_TOKEN:Logflare Public Token"
-    "LOGFLARE_PRIVATE_ACCESS_TOKEN:Logflare Private Token"
-    "POSTGRES_PASSWORD:PostgreSQL Password"
-    "LANGFLOW_DB_PASSWORD:Langflow DB Password"
-    "DASHBOARD_PASSWORD:Dashboard Password"
-    "MEILI_MASTER_KEY:Meilisearch Master Key"
-)
+OAUTH_CONFIGURED=false
+if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
+    OAUTH_CONFIGURED=true
 
-total_secrets=$((${#secrets[@]} + 1))
-counter=1
+    # Show OAuth Provider Settings info
+    whiptail --title "OAuth Provider Settings" \
+             --msgbox "\nEnter your OAuth provider's base URL\n\nExamples:\n  • Authentik: https://auth.yourdomain.com\n  • Keycloak: https://keycloak.yourdomain.com/realms/myrealm\n  • Google: https://accounts.google.com\n  • Azure AD: https://login.microsoftonline.com/{tenant-id}" \
+             16 70
 
-# Generate secrets with progress gauge
-{
-    for secret_pair in "${secrets[@]}"; do
-        IFS=':' read -r key name <<< "$secret_pair"
-        percentage=$((counter * 100 / total_secrets))
-        echo "$percentage"
-        echo "XXX"
-        echo "Generating secret $counter of $total_secrets:\n$name"
-        echo "XXX"
-
-        value=$(generate_secret)
-        replace_env_value "$key" "$value"
-        ((counter++))
+    while true; do
+        prompt_with_default "OAuth Provider Base URL" "http://localhost:9000" OAUTH_URL
+        if validate_url "$OAUTH_URL"; then
+            replace_env_value "OAUTH_PROVIDER_URL" "$OAUTH_URL"
+            break
+        else
+            whiptail --title "Invalid URL" --msgbox "\nInvalid URL format. Please enter a valid URL starting with http:// or https://" 10 60
+        fi
     done
 
-    # Generate SECRET_KEY_BASE (64 chars)
-    percentage=$((counter * 100 / total_secrets))
-    echo "$percentage"
-    echo "XXX"
-    echo "Generating secret $counter of $total_secrets:\nSecret Key Base (64 chars)"
-    echo "XXX"
+    # Open WebUI OAuth Configuration
+    prompt_with_default "OAuth Provider Name (shown to users)" "SSO" OAUTH_NAME
+    replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
 
-    SECRET_KEY_BASE=$(generate_long_secret 64)
-    replace_env_value "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
+    # Show OpenID Configuration info
+    whiptail --title "OpenID Configuration" \
+             --msgbox "\nEnter your OpenID Provider URL (discovery endpoint)\n\nExamples:\n  • Authentik:\n    ${OAUTH_URL}/application/o/open-webui/.well-known/openid-configuration\n\n  • Keycloak:\n    Include realm in base URL (already configured above)\n\n  • Google:\n    https://accounts.google.com/.well-known/openid-configuration" \
+             18 70
 
-    echo "100"
-} | whiptail --title "Generating Secrets" --gauge "Initializing secret generation..." 8 70 0
+    prompt_with_default "OpenID Provider URL (leave empty if using base URL)" "" OPENID_URL
+    if [ -n "$OPENID_URL" ]; then
+        replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
+    fi
 
-# Set default app name
-replace_env_value "WEBUI_NAME" "Open WebUI"
+    # Show Client Credentials info
+    whiptail --title "Client Credentials" \
+             --msgbox "\nEnter your OAuth application credentials\n\nYou'll need to create an OAuth application in your provider with:\n\n  Redirect URI:\n  ${OPEN_WEBUI_URL}/oauth/oidc/callback\n\nThen enter the Client ID and Secret here." \
+             16 70
 
-# Success message
-whiptail --title "Secrets Generated" \
-         --msgbox "\n✓ All secrets generated successfully!\n\n  Total: ${total_secrets} cryptographically secure secrets\n  Algorithm: OpenSSL random hex\n  Stored in: .env (permissions: 600)\n\nYour secrets are ready for deployment." \
-         14 70
+    prompt_with_default "OAuth Client ID" "" OAUTH_CLIENT_ID
+    replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_ID" "$OAUTH_CLIENT_ID"
+
+    prompt_password "OAuth Client Secret" OAUTH_CLIENT_SECRET
+    replace_env_value "OPEN_WEBUI_OAUTH_CLIENT_SECRET" "$OAUTH_CLIENT_SECRET"
+
+    # Set sensible OAuth defaults
+    replace_env_value "ENABLE_OAUTH_SIGNUP" "true"
+    replace_env_value "ENABLE_OAUTH_PERSISTENT_CONFIG" "true"
+    replace_env_value "OAUTH_MERGE_ACCOUNTS_BY_EMAIL" "true"
+    replace_env_value "OAUTH_SCOPES" "openid email profile"
+    replace_env_value "ENABLE_PASSWORD_AUTH" "true"
+
+    # Success message
+    whiptail --title "OAuth Configuration Complete" \
+             --msgbox "\n✓ OAuth/OIDC configured successfully!\n\nConfiguration:\n  Provider: ${OAUTH_NAME}\n  URL: ${OAUTH_URL}\n  Client ID: ${OAUTH_CLIENT_ID}\n\nLocal password authentication remains enabled as a fallback." \
+             14 70
+else
+    whiptail --title "OAuth Skipped" \
+             --msgbox "\nOAuth configuration skipped.\n\nUsers will authenticate with local accounts only." \
+             10 60
+fi
 
 CURRENT_STEP=6
 
