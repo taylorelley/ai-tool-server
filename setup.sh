@@ -702,13 +702,92 @@ if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
                      --msgbox "\nscrapix.config.json already exists.\n\nSkipping config generation." \
                      10 50
         else
-            # Create config from template, replacing the placeholder
-            sed "s/\${MEILI_MASTER_KEY}/$(grep MEILI_MASTER_KEY .env | cut -d '=' -f2)/g" \
-                scrapix.config.json.template > scrapix.config.json
+            # Ask if user wants to use default URLs or customize
+            if whiptail --title "Scrapix URLs" \
+                        --yesno "\nWould you like to use the default documentation URLs?\n\nDefault sites:\n  • Open WebUI docs\n  • Anthropic/Claude docs\n  • OpenAI docs\n  • Meilisearch docs\n\nSelect No to enter your own URLs." \
+                        16 60; then
+                # Use default URLs
+                SCRAPIX_URLS='["https://docs.openwebui.com","https://docs.anthropic.com","https://platform.openai.com/docs","https://docs.meilisearch.com"]'
+                URLS_DISPLAY="  • Open WebUI documentation\n  • Anthropic/Claude documentation\n  • OpenAI documentation\n  • Meilisearch documentation"
+            else
+                # Collect custom URLs
+                whiptail --title "Custom URLs" \
+                         --msgbox "\nEnter documentation URLs to scrape and index.\n\nExamples:\n  • https://docs.openwebui.com\n  • https://docs.anthropic.com\n  • https://python.langchain.com/docs\n\nYou'll be prompted to add URLs one at a time." \
+                         16 60
+
+                SCRAPIX_URLS='[]'
+                URLS_DISPLAY=""
+                URL_COUNT=0
+
+                while true; do
+                    URL_PROMPT="Enter documentation URL $(($URL_COUNT + 1))"
+                    if [ $URL_COUNT -gt 0 ]; then
+                        URL_PROMPT+="\n\nCurrent URLs: $URL_COUNT"
+                    fi
+
+                    prompt_with_default "$URL_PROMPT (leave empty to finish)" "" CUSTOM_URL
+
+                    # If empty, user is done
+                    if [ -z "$CUSTOM_URL" ]; then
+                        if [ $URL_COUNT -eq 0 ]; then
+                            whiptail --title "No URLs Entered" \
+                                     --msgbox "\nNo URLs entered. Using default list instead." \
+                                     10 50
+                            SCRAPIX_URLS='["https://docs.openwebui.com","https://docs.anthropic.com","https://platform.openai.com/docs","https://docs.meilisearch.com"]'
+                            URLS_DISPLAY="  • Open WebUI documentation\n  • Anthropic/Claude documentation\n  • OpenAI documentation\n  • Meilisearch documentation"
+                        fi
+                        break
+                    fi
+
+                    # Validate URL format
+                    if ! validate_url "$CUSTOM_URL"; then
+                        whiptail --title "Invalid URL" \
+                                 --msgbox "\nInvalid URL format: $CUSTOM_URL\n\nPlease enter a valid URL starting with http:// or https://" \
+                                 10 60
+                        continue
+                    fi
+
+                    # Add URL to JSON array
+                    if [ "$SCRAPIX_URLS" = "[]" ]; then
+                        SCRAPIX_URLS="[\"$CUSTOM_URL\"]"
+                    else
+                        # Remove closing bracket, add comma and new URL, close bracket
+                        SCRAPIX_URLS="${SCRAPIX_URLS%]},\"$CUSTOM_URL\"]"
+                    fi
+
+                    # Add to display list
+                    URLS_DISPLAY+="  • $CUSTOM_URL\n"
+                    ((URL_COUNT++))
+
+                    # Ask if they want to add more
+                    if ! prompt_yes_no "Add another URL?" "y"; then
+                        break
+                    fi
+                done
+            fi
+
+            # Generate scrapix.config.json with user's URLs
+            MEILI_KEY=$(grep MEILI_MASTER_KEY .env | cut -d '=' -f2)
+            cat > scrapix.config.json <<EOF
+{
+  "start_urls": ${SCRAPIX_URLS},
+  "meilisearch_url": "http://meilisearch:7700",
+  "meilisearch_api_key": "${MEILI_KEY}",
+  "meilisearch_index_uid": "web_docs",
+  "strategy": "docssearch",
+  "headless": true,
+  "batch_size": 100,
+  "urls_to_exclude": [
+    "*/api-reference/*",
+    "*/changelog/*"
+  ],
+  "additional_request_headers": {}
+}
+EOF
 
             whiptail --title "Scrapix Configured" \
-                     --msgbox "\n✓ Created scrapix.config.json\n\nDefault indexed sites:\n  • Open WebUI documentation\n  • Anthropic/Claude documentation\n  • OpenAI documentation\n  • Meilisearch documentation\n\nEdit scrapix.config.json to customize." \
-                     16 70
+                     --msgbox "\n✓ Created scrapix.config.json\n\nIndexed sites:\n${URLS_DISPLAY}\n\nYou can edit scrapix.config.json to modify URLs later." \
+                     18 70
         fi
     fi
 
