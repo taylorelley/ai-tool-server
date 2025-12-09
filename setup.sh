@@ -691,11 +691,13 @@ CURRENT_STEP=6
 
 # Step 6 Introduction
 whiptail --title "Step 6 of $TOTAL_STEPS: Meilisearch Configuration" \
-         --msgbox "\nMeilisearch - Fast Document Search Engine\n\nMeilisearch provides:\n  • Lightning-fast full-text search\n  • Typo-tolerance and fuzzy matching\n  • Easy integration with Open WebUI\n\nScrapix Integration:\n  • Automatically scrape and index documentation\n  • Pre-configured for popular AI docs\n  • Customizable site list" \
+         --msgbox "\nMeilisearch - Fast Document Search Engine\n\nMeilisearch is a core component of the stack:\n  • Lightning-fast full-text search\n  • Typo-tolerance and fuzzy matching\n  • Seamless integration with Open WebUI\n\nScrapix Integration:\n  • Automatically scrape and index documentation\n  • Pre-configured for popular AI docs\n  • Customizable site list" \
          18 70
 
-if prompt_yes_no "Configure Meilisearch for document search?" "y"; then
-    if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
+# Meilisearch is always configured as a core component
+MEILISEARCH_CONFIGURED=true
+
+if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
         # Check if config already exists
         if [ -f scrapix.config.json ]; then
             whiptail --title "Config Exists" \
@@ -789,19 +791,16 @@ EOF
                      --msgbox "\n✓ Created scrapix.config.json\n\nIndexed sites:\n${URLS_DISPLAY}\n\nYou can edit scrapix.config.json to modify URLs later." \
                      18 70
         fi
+    else
+        whiptail --title "Scrapix Skipped" \
+                 --msgbox "\nScrapix configuration skipped.\n\nYou can manually create scrapix.config.json later to index documentation sites.\n\nTemplate available: scrapix.config.json.template" \
+                 12 60
     fi
 
-    # Show Meilisearch usage instructions
-    whiptail --title "Meilisearch Configured" \
-             --msgbox "\n✓ Meilisearch configured successfully!\n\nAccess:\n  Web Interface: http://localhost:7700\n  Master Key: Auto-generated\n\nTo use in Open WebUI:\n  1. Start: docker compose up -d\n  2. Index docs: docker compose run scrapix\n  3. Import tool: Admin → Tools → Import\n  4. Upload: volumes/open-webui/tools/meilisearch_search.py\n\nThe tool auto-configures from environment variables." \
-             20 70
-    MEILISEARCH_CONFIGURED=true
-else
-    whiptail --title "Meilisearch Skipped" \
-             --msgbox "\nMeilisearch configuration skipped.\n\nDocument search will not be available." \
-             10 50
-    MEILISEARCH_CONFIGURED=false
-fi
+# Show Meilisearch usage instructions
+whiptail --title "Meilisearch Configured" \
+         --msgbox "\n✓ Meilisearch is configured as a core component!\n\nAccess:\n  Web Interface: http://localhost:7700\n  Master Key: Auto-generated in .env\n\nTo use in Open WebUI:\n  1. Start: docker compose up -d\n  2. Index docs: docker compose run scrapix\n  3. Import tool: Admin → Tools → Import\n  4. Upload: volumes/open-webui/tools/meilisearch_search.py\n\nThe tool auto-configures from environment variables." \
+         20 70
 
 CURRENT_STEP=7
 
@@ -900,12 +899,10 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     OVERRIDE_CONTENT+="      - SUPABASE_URL=http://kong:8000\n"
     OVERRIDE_CONTENT+="      - SUPABASE_ANON_KEY=\${ANON_KEY}\n"
 
-    # Meilisearch Integration (if configured)
-    if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-        OVERRIDE_CONTENT+="      - MEILISEARCH_URL=http://meilisearch:7700\n"
-        OVERRIDE_CONTENT+="      - MEILISEARCH_API_KEY=\${MEILI_MASTER_KEY}\n"
-        OVERRIDE_CONTENT+="      - ENABLE_RAG_WEB_SEARCH=true\n"
-    fi
+    # Meilisearch Integration (core component)
+    OVERRIDE_CONTENT+="      - MEILISEARCH_URL=http://meilisearch:7700\n"
+    OVERRIDE_CONTENT+="      - MEILISEARCH_API_KEY=\${MEILI_MASTER_KEY}\n"
+    OVERRIDE_CONTENT+="      - ENABLE_RAG_WEB_SEARCH=true\n"
 
     # PostgreSQL option
     if prompt_yes_no "Use PostgreSQL for Open WebUI instead of SQLite?" "n"; then
@@ -919,7 +916,7 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     echo -e "$OVERRIDE_CONTENT" > docker-compose.override.yml
 
     whiptail --title "Configuration Generated" \
-             --msgbox "\n✓ docker-compose.override.yml created!\n\nConfiguration includes:\n  • AI provider environment variables\n  • Supabase integration\n  • Open WebUI database: ${OPENWEBUI_DB}\n$([ \"$OAUTH_CONFIGURED\" = true ] && echo \"  • OAuth/OIDC configuration\")\n$([ \"$MEILISEARCH_CONFIGURED\" = true ] && echo \"  • Meilisearch integration\")\n\nDocker Compose will merge this with docker-compose.yml on startup." \
+             --msgbox "\n✓ docker-compose.override.yml created!\n\nConfiguration includes:\n  • AI provider environment variables\n  • Supabase integration\n  • Meilisearch integration (core)\n  • Open WebUI database: ${OPENWEBUI_DB}\n$([ \"$OAUTH_CONFIGURED\" = true ] && echo \"  • OAuth/OIDC configuration\")\n\nDocker Compose will merge this with docker-compose.yml on startup." \
              16 70
 fi
 
@@ -964,11 +961,7 @@ else
     SUMMARY+="Email: Disabled\n"
 fi
 
-if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-    SUMMARY+="Document Search: Meilisearch enabled\n"
-else
-    SUMMARY+="Document Search: Not configured\n"
-fi
+SUMMARY+="Document Search: Meilisearch (core component)\n"
 
 if [ -f docker-compose.override.yml ] && [ "$SKIP_OVERRIDE" != true ]; then
     SUMMARY+="Override File: docker-compose.override.yml ✓\n"
@@ -986,7 +979,8 @@ NEXT_STEPS+="   See README.md 'Create Required Supabase Files'\n\n"
 NEXT_STEPS+="2. Start the Stack\n"
 NEXT_STEPS+="   docker compose up -d\n\n"
 
-if [ "$MEILISEARCH_CONFIGURED" = true ]; then
+# Check if Scrapix was configured
+if [ -f scrapix.config.json ]; then
     NEXT_STEPS+="3. Index Documentation (optional)\n"
     NEXT_STEPS+="   docker compose run scrapix\n\n"
     NEXT_STEPS+="4. Access Your Services\n"
@@ -999,10 +993,7 @@ NEXT_STEPS+="Open WebUI:      ${OPEN_WEBUI_URL}\n"
 NEXT_STEPS+="Langflow:        ${LANGFLOW_URL}\n"
 NEXT_STEPS+="Supabase Studio: ${SITE_URL}\n"
 NEXT_STEPS+="Supabase API:    ${SUPABASE_PUBLIC_URL}\n"
-
-if [ "$MEILISEARCH_CONFIGURED" = true ]; then
-    NEXT_STEPS+="Meilisearch:     http://localhost:7700\n"
-fi
+NEXT_STEPS+="Meilisearch:     http://localhost:7700\n"
 
 if [ "$OAUTH_CONFIGURED" = true ]; then
     NEXT_STEPS+="OAuth Provider:  ${OAUTH_URL}\n"
