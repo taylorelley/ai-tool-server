@@ -409,12 +409,14 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     SUPABASE_PUBLIC_URL="https://db-api.${DOMAIN}"
     API_EXTERNAL_URL="https://db-api.${DOMAIN}"
     SITE_URL="https://db-admin.${DOMAIN}"
+    MEILISEARCH_URL="https://search.${DOMAIN}"
 
     if prompt_yes_no "Customize auto-configured URLs?" "n"; then
         prompt_with_default "Open WebUI URL" "$OPEN_WEBUI_URL" OPEN_WEBUI_URL
         prompt_with_default "Langflow URL" "$LANGFLOW_URL" LANGFLOW_URL
         prompt_with_default "Supabase API URL" "$SUPABASE_PUBLIC_URL" SUPABASE_PUBLIC_URL
         prompt_with_default "Supabase Studio URL" "$SITE_URL" SITE_URL
+        prompt_with_default "Meilisearch URL" "$MEILISEARCH_URL" MEILISEARCH_URL
         API_EXTERNAL_URL="$SUPABASE_PUBLIC_URL"
     fi
 else
@@ -424,6 +426,7 @@ else
     SUPABASE_PUBLIC_URL="http://localhost:8000"
     API_EXTERNAL_URL="http://localhost:8000"
     SITE_URL="http://localhost:3001"
+    MEILISEARCH_URL="http://localhost:7700"
 fi
 
 replace_env_value "OPEN_WEBUI_URL" "$OPEN_WEBUI_URL"
@@ -431,6 +434,7 @@ replace_env_value "LANGFLOW_URL" "$LANGFLOW_URL"
 replace_env_value "SUPABASE_PUBLIC_URL" "$SUPABASE_PUBLIC_URL"
 replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
+replace_env_value "MEILISEARCH_URL" "$MEILISEARCH_URL"
 
 CURRENT_STEP=2
 
@@ -811,101 +815,23 @@ fi
 # Set proper permissions
 chmod 600 .env
 
-# Build configuration summary
-SUMMARY="✨  INSTALLATION COMPLETE!  ✨\n\n"
-SUMMARY+="Your AI Tool Server Stack is ready to deploy!\n\n"
-SUMMARY+="━━━━━ CONFIGURATION SUMMARY ━━━━━\n\n"
-SUMMARY+="Secrets: 13 cryptographically secure keys\n"
-SUMMARY+="Environment: .env (permissions: 600)\n\n"
-
-if [ "$PRODUCTION" = true ]; then
-    SUMMARY+="Deployment: Production (${DOMAIN})\n"
-else
-    SUMMARY+="Deployment: Development (localhost)\n"
-fi
+# Build service URLs summary
+SUMMARY="✨  SETUP COMPLETE!  ✨\n\n"
+SUMMARY+="━━━━━ YOUR SERVICES ━━━━━\n\n"
+SUMMARY+="Open WebUI:      ${OPEN_WEBUI_URL}\n"
+SUMMARY+="Langflow:        ${LANGFLOW_URL}\n"
+SUMMARY+="Supabase Studio: ${SITE_URL}\n"
+SUMMARY+="Supabase API:    ${SUPABASE_PUBLIC_URL}\n"
+SUMMARY+="Meilisearch:     ${MEILISEARCH_URL}\n"
 
 if [ "$OAUTH_CONFIGURED" = true ]; then
-    SUMMARY+="Authentication: OAuth/OIDC + Local\n"
-else
-    SUMMARY+="Authentication: Local only\n"
+    SUMMARY+="\nOAuth Provider:  ${OAUTH_URL}\n"
 fi
 
-# Count configured AI providers
-AI_PROVIDERS=""
-[ -n "$OLLAMA_URL" ] && AI_PROVIDERS="${AI_PROVIDERS}Ollama, "
-[ -n "$OPENAI_KEY" ] && AI_PROVIDERS="${AI_PROVIDERS}OpenAI, "
-[ -n "$ANTHROPIC_KEY" ] && AI_PROVIDERS="${AI_PROVIDERS}Anthropic, "
-[ -n "$OPENROUTER_KEY" ] && AI_PROVIDERS="${AI_PROVIDERS}OpenRouter, "
-AI_PROVIDERS=${AI_PROVIDERS%, }
-if [ -n "$AI_PROVIDERS" ]; then
-    SUMMARY+="AI Providers: ${AI_PROVIDERS}\n"
-else
-    SUMMARY+="AI Providers: None configured\n"
-fi
-
-if [ -n "$SMTP_HOST" ]; then
-    SUMMARY+="Email: Enabled (${SMTP_HOST})\n"
-else
-    SUMMARY+="Email: Disabled\n"
-fi
-
-SUMMARY+="Document Search: Meilisearch (core component)\n"
-
-if [ -f docker-compose.override.yml ] && [ "$SKIP_OVERRIDE" != true ]; then
-    SUMMARY+="Override File: docker-compose.override.yml ✓\n"
-fi
-
-# Show configuration summary
+# Show service URLs
 whiptail --title "Setup Complete! 🎉" \
          --msgbox "$SUMMARY" \
-         24 70
-
-# Build next steps message
-NEXT_STEPS="━━━━━ NEXT STEPS ━━━━━\n\n"
-NEXT_STEPS+="1. Download Supabase Files\n"
-NEXT_STEPS+="   See README.md 'Create Required Supabase Files'\n\n"
-NEXT_STEPS+="2. Start the Stack\n"
-NEXT_STEPS+="   docker compose up -d\n\n"
-
-# Check if Scrapix was configured
-if [ -f scrapix.config.json ]; then
-    NEXT_STEPS+="3. Index Documentation (optional)\n"
-    NEXT_STEPS+="   docker compose run scrapix\n\n"
-    NEXT_STEPS+="4. Access Your Services\n"
-else
-    NEXT_STEPS+="3. Access Your Services\n"
-fi
-
-NEXT_STEPS+="\n━━━━━ SERVICE URLS ━━━━━\n\n"
-NEXT_STEPS+="Open WebUI:      ${OPEN_WEBUI_URL}\n"
-NEXT_STEPS+="Langflow:        ${LANGFLOW_URL}\n"
-NEXT_STEPS+="Supabase Studio: ${SITE_URL}\n"
-NEXT_STEPS+="Supabase API:    ${SUPABASE_PUBLIC_URL}\n"
-NEXT_STEPS+="Meilisearch:     http://localhost:7700\n"
-
-if [ "$OAUTH_CONFIGURED" = true ]; then
-    NEXT_STEPS+="OAuth Provider:  ${OAUTH_URL}\n"
-fi
-
-# Show next steps
-whiptail --title "Next Steps" \
-         --msgbox "$NEXT_STEPS" \
-         24 70
-
-# Build documentation message
-DOCS="━━━━━ DOCUMENTATION ━━━━━\n\n"
-DOCS+="Full Guide:\n  README.md\n\n"
-DOCS+="Authentik Setup:\n  docs/EXTERNAL_AUTHENTIK_SETUP.md\n\n"
-DOCS+="Quick Reference:\n  docs/QUICK_REFERENCE.md\n\n"
-DOCS+="Troubleshooting:\n  docs/TROUBLESHOOTING.md\n\n\n"
-DOCS+="━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-DOCS+="✓ Setup completed successfully!\n\n"
-DOCS+="Thank you for using AI Tool Server Stack!"
-
-# Show documentation
-whiptail --title "Documentation 📚" \
-         --msgbox "$DOCS" \
-         22 70
+         16 70
 
 # Ask if user wants to start the stack
 if whiptail --title "Start the Stack?" \
