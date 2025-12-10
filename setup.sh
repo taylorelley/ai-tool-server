@@ -872,6 +872,8 @@ if whiptail --title "Start the Stack?" \
             else
                 # Load configuration from .env
                 MEILI_KEY=$(grep -m1 MEILI_MASTER_KEY .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                INDEX_NAME=$(grep -m1 VITE_MEILISEARCH_INDEX .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                INDEX_NAME=${INDEX_NAME:-web_docs}
                 EMBEDDER_SOURCE=$(grep -m1 MEILISEARCH_EMBEDDER_SOURCE .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
                 EMBEDDER_MODEL=$(grep -m1 MEILISEARCH_EMBEDDER_MODEL .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
                 EMBEDDER_NAME=$(grep -m1 MEILISEARCH_EMBEDDER_NAME .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
@@ -907,15 +909,15 @@ if whiptail --title "Start the Stack?" \
 
                 # Configure the embedder via API
                 EMBEDDER_RESPONSE=$(curl -s -X PATCH \
-                    "http://localhost:7700/indexes/web_docs/settings/embedders" \
+                    "http://localhost:7700/indexes/${INDEX_NAME}/settings/embedders" \
                     -H "Authorization: Bearer ${MEILI_KEY}" \
                     -H "Content-Type: application/json" \
                     -d "{\"${EMBEDDER_NAME}\":${EMBEDDER_CONFIG}}" 2>&1)
 
                 if [ $? -eq 0 ]; then
                     whiptail --title "Embedder Configured! ✨" \
-                             --msgbox "\n✓ Meilisearch embedder configured successfully!\n\nEmbedder: ${EMBEDDER_NAME}\nSource: ${EMBEDDER_SOURCE}\nModel: ${EMBEDDER_MODEL}\n\nVector search is now available in the hybrid search UI." \
-                             16 70
+                             --msgbox "\n✓ Meilisearch embedder configured successfully!\n\nIndex: ${INDEX_NAME}\nEmbedder: ${EMBEDDER_NAME}\nSource: ${EMBEDDER_SOURCE}\nModel: ${EMBEDDER_MODEL}\n\nVector search is now available in the hybrid search UI." \
+                             18 70
                 else
                     whiptail --title "Embedder Configuration Failed" \
                              --msgbox "\n✗ Failed to configure embedder.\n\nError: ${EMBEDDER_RESPONSE}\n\nYou can configure it manually later." \
