@@ -141,6 +141,18 @@ services:
     networks:
       - ai-tools-net
 
+  meilisearch-ui-admin:
+    container_name: meilisearch-ui-admin
+    image: riccoxie/meilisearch-ui:latest
+    restart: unless-stopped
+    ports:
+      - "${MEILISEARCH_UI_ADMIN_PORT:-7702}:24900"
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - ai-tools-net
+
   # ======================
   # SUPABASE LAYER
   # ======================

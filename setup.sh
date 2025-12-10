@@ -227,6 +227,7 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
     SITE_URL="https://db-admin.${DOMAIN}"
     MEILISEARCH_URL="https://search-api.${DOMAIN}"
     MEILISEARCH_UI_URL="https://search.${DOMAIN}"
+    MEILISEARCH_UI_ADMIN_URL="https://search-admin.${DOMAIN}"
 
     if prompt_yes_no "Customize auto-configured URLs?" "n"; then
         prompt_with_default "Open WebUI URL" "$OPEN_WEBUI_URL" OPEN_WEBUI_URL
@@ -235,6 +236,7 @@ if prompt_yes_no "Is this a production deployment?" "n"; then
         prompt_with_default "Supabase Studio URL" "$SITE_URL" SITE_URL
         prompt_with_default "Meilisearch URL" "$MEILISEARCH_URL" MEILISEARCH_URL
         prompt_with_default "Meilisearch UI URL" "$MEILISEARCH_UI_URL" MEILISEARCH_UI_URL
+        prompt_with_default "Meilisearch UI Admin URL" "$MEILISEARCH_UI_ADMIN_URL" MEILISEARCH_UI_ADMIN_URL
         API_EXTERNAL_URL="$SUPABASE_PUBLIC_URL"
     fi
 else
@@ -246,6 +248,7 @@ else
     SITE_URL="http://localhost:3001"
     MEILISEARCH_URL="http://localhost:7700"
     MEILISEARCH_UI_URL="http://localhost:7701"
+    MEILISEARCH_UI_ADMIN_URL="http://localhost:7702"
 fi
 
 replace_env_value "OPEN_WEBUI_URL" "$OPEN_WEBUI_URL"
@@ -255,6 +258,7 @@ replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
 replace_env_value "MEILISEARCH_URL" "$MEILISEARCH_URL"
 replace_env_value "MEILISEARCH_UI_URL" "$MEILISEARCH_UI_URL"
+replace_env_value "MEILISEARCH_UI_ADMIN_URL" "$MEILISEARCH_UI_ADMIN_URL"
 
 CURRENT_STEP=2
 
@@ -687,12 +691,13 @@ chmod 600 .env
 # Build service URLs summary
 SUMMARY="✨  SETUP COMPLETE!  ✨\n\n"
 SUMMARY+="━━━━━ YOUR SERVICES ━━━━━\n\n"
-SUMMARY+="Open WebUI:      ${OPEN_WEBUI_URL}\n"
-SUMMARY+="Langflow:        ${LANGFLOW_URL}\n"
-SUMMARY+="Supabase Studio: ${SITE_URL}\n"
-SUMMARY+="Supabase API:    ${SUPABASE_PUBLIC_URL}\n"
-SUMMARY+="Meilisearch API: ${MEILISEARCH_URL}\n"
-SUMMARY+="Meilisearch UI:  ${MEILISEARCH_UI_URL}\n"
+SUMMARY+="Open WebUI:           ${OPEN_WEBUI_URL}\n"
+SUMMARY+="Langflow:             ${LANGFLOW_URL}\n"
+SUMMARY+="Supabase Studio:      ${SITE_URL}\n"
+SUMMARY+="Supabase API:         ${SUPABASE_PUBLIC_URL}\n"
+SUMMARY+="Meilisearch API:      ${MEILISEARCH_URL}\n"
+SUMMARY+="Meilisearch UI:       ${MEILISEARCH_UI_URL}\n"
+SUMMARY+="Meilisearch UI Admin: ${MEILISEARCH_UI_ADMIN_URL}\n"
 
 if [ "$OAUTH_CONFIGURED" = true ]; then
     SUMMARY+="\nOAuth Provider:  ${OAUTH_URL}\n"
