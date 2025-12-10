@@ -512,7 +512,7 @@ if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
 
                     # Add to display list
                     URLS_DISPLAY+="  • $CUSTOM_URL\n"
-                    ((URL_COUNT++))
+                    ((++URL_COUNT))
 
                     # Ask if they want to add more
                     if ! prompt_yes_no "Add another URL?" "y"; then
@@ -583,17 +583,17 @@ if prompt_yes_no "Configure vector search embeddings for Meilisearch?" "n"; then
 
     if [ -n "$OPENAI_KEY" ]; then
         PROVIDER_OPTIONS+=("OpenAI" "Use OpenAI embeddings (text-embedding-3-small)")
-        ((PROVIDER_COUNT++))
+        ((++PROVIDER_COUNT))
     fi
 
     if [ -n "$OLLAMA_URL" ]; then
         PROVIDER_OPTIONS+=("Ollama" "Use local Ollama embeddings (nomic-embed-text)")
-        ((PROVIDER_COUNT++))
+        ((++PROVIDER_COUNT))
     fi
 
     # Always offer custom option
     PROVIDER_OPTIONS+=("Custom" "Configure custom REST endpoint")
-    ((PROVIDER_COUNT++))
+    ((++PROVIDER_COUNT))
 
     if [ $PROVIDER_COUNT -eq 0 ]; then
         whiptail --title "No Providers Configured" \
@@ -874,7 +874,7 @@ if whiptail --title "Start the Stack?" \
             MAX_WAIT=60
             until docker compose exec -T meilisearch curl -sf http://localhost:7700/health > /dev/null 2>&1 || [ $WAIT_COUNT -eq $MAX_WAIT ]; do
                 sleep 1
-                ((WAIT_COUNT++))
+                ((++WAIT_COUNT))
             done
 
             if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
