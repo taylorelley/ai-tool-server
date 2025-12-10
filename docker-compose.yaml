@@ -124,10 +124,17 @@ services:
 
   meilisearch-ui:
     container_name: meilisearch-ui
-    image: riccoxie/meilisearch-ui:latest
+    image: ghcr.io/taylorelley/meilisearch-simple-hybrid-search-frontend:latest
     restart: unless-stopped
     ports:
-      - "${MEILISEARCH_UI_PORT:-7701}:24900"
+      - "${MEILISEARCH_UI_PORT:-7701}:80"
+    environment:
+      - VITE_MEILISEARCH_HOST=http://meilisearch:7700
+      - VITE_MEILISEARCH_API_KEY=${MEILI_MASTER_KEY}
+      - VITE_MEILISEARCH_INDEX=${VITE_MEILISEARCH_INDEX:-web_docs}
+      - VITE_APP_TITLE=${VITE_APP_TITLE:-AI Tool Server Search}
+      - VITE_MEILISEARCH_SEMANTIC_RATIO=${VITE_MEILISEARCH_SEMANTIC_RATIO:-0.5}
+      - VITE_MEILISEARCH_EMBEDDER=${VITE_MEILISEARCH_EMBEDDER:-default}
     depends_on:
       meilisearch:
         condition: service_healthy

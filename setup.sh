@@ -537,6 +537,27 @@ EOF
         fi
 fi
 
+# Meilisearch UI Configuration
+if prompt_yes_no "Configure Meilisearch UI settings?" "n"; then
+    prompt_with_default "Search UI Title" "AI Tool Server Search" VITE_APP_TITLE
+    replace_env_value "VITE_APP_TITLE" "$VITE_APP_TITLE"
+
+    prompt_with_default "Default Search Index" "web_docs" VITE_MEILISEARCH_INDEX
+    replace_env_value "VITE_MEILISEARCH_INDEX" "$VITE_MEILISEARCH_INDEX"
+
+    prompt_with_default "Semantic Ratio (0.0=keyword, 1.0=semantic)" "0.5" VITE_SEMANTIC_RATIO
+    replace_env_value "VITE_MEILISEARCH_SEMANTIC_RATIO" "$VITE_SEMANTIC_RATIO"
+
+    prompt_with_default "Vector Embedder Name" "default" VITE_EMBEDDER
+    replace_env_value "VITE_MEILISEARCH_EMBEDDER" "$VITE_EMBEDDER"
+else
+    # Set defaults
+    replace_env_value "VITE_APP_TITLE" "AI Tool Server Search"
+    replace_env_value "VITE_MEILISEARCH_INDEX" "web_docs"
+    replace_env_value "VITE_MEILISEARCH_SEMANTIC_RATIO" "0.5"
+    replace_env_value "VITE_MEILISEARCH_EMBEDDER" "default"
+fi
+
 CURRENT_STEP=7
 
 # Step 7: Generate docker-compose.override.yml
