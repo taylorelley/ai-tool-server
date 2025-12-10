@@ -626,9 +626,9 @@ if prompt_yes_no "Configure vector search embeddings for Meilisearch?" "n"; then
                     prompt_with_default "Ollama embedding model" "nomic-embed-text" OLLAMA_EMBED_MODEL
                     replace_env_value "MEILISEARCH_EMBEDDER_MODEL" "$OLLAMA_EMBED_MODEL"
 
-                    # Use the internal Docker hostname for Ollama
-                    OLLAMA_INTERNAL_URL="http://host.docker.internal:11434"
-                    replace_env_value "MEILISEARCH_EMBEDDER_URL" "$OLLAMA_INTERNAL_URL"
+                    # Use user-configured Ollama URL, fallback to internal Docker hostname
+                    OLLAMA_EMBEDDER_URL="${OLLAMA_URL:-http://host.docker.internal:11434}"
+                    replace_env_value "MEILISEARCH_EMBEDDER_URL" "$OLLAMA_EMBEDDER_URL"
                     replace_env_value "MEILISEARCH_EMBEDDER_API_KEY" ""
                     ;;
 
