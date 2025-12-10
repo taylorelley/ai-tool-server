@@ -6,7 +6,7 @@
 *.key
 
 # Generated configuration files
-scrapix.config.json
+scrapix.env
 docker-compose.override.yml
 
 # Docker volumes and data

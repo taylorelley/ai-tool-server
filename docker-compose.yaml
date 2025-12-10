@@ -141,9 +141,8 @@ services:
     depends_on:
       meilisearch:
         condition: service_healthy
-    volumes:
-      - ./scrapix.config.json:/app/scrapix.config.json:ro
-    command: ["run", "-p", "/app/scrapix.config.json"]
+    env_file:
+      - scrapix.env
     networks:
       - ai-tools-net
 
