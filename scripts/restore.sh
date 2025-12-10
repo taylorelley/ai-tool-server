@@ -20,6 +20,15 @@ echo "AI Tool Server Stack - Restore"
 echo -e "==============================================${NC}"
 echo ""
 
+# Check if docker compose is available
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}✗ Error: 'docker compose' command not found${NC}"
+    echo ""
+    echo "Please ensure Docker Compose is installed and available."
+    echo "Visit: https://docs.docker.com/compose/install/"
+    exit 1
+fi
+
 # Check if backup path provided
 if [ -z "$1" ]; then
     echo -e "${RED}✗ Error: No backup path provided${NC}"

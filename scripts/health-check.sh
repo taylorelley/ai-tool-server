@@ -101,25 +101,32 @@ echo ""
 echo -e "${BLUE}Checking port availability...${NC}"
 echo ""
 
-# Check if ports are available
-PORTS=(
-    "LANGFLOW_PORT:7860:Langflow"
-    "OPEN_WEBUI_PORT:8080:Open WebUI"
-    "STUDIO_PORT:3001:Supabase Studio"
-    "KONG_HTTP_PORT:8000:Supabase API"
-)
+# Check if lsof is available
+if ! command -v lsof &> /dev/null; then
+    echo -e "${YELLOW}⚠${NC}  WARNING: lsof utility not found - skipping port availability checks"
+    echo "  Install lsof to enable port checks: sudo apt-get install lsof (Debian/Ubuntu) or sudo yum install lsof (RHEL/CentOS)"
+    ((WARNINGS++))
+else
+    # Check if ports are available
+    PORTS=(
+        "LANGFLOW_PORT:7860:Langflow"
+        "OPEN_WEBUI_PORT:8080:Open WebUI"
+        "STUDIO_PORT:3001:Supabase Studio"
+        "KONG_HTTP_PORT:8000:Supabase API"
+    )
 
-for port_info in "${PORTS[@]}"; do
-    IFS=':' read -r var default_port name <<< "$port_info"
-    port="${!var:-$default_port}"
+    for port_info in "${PORTS[@]}"; do
+        IFS=':' read -r var default_port name <<< "$port_info"
+        port="${!var:-$default_port}"
 
-    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-        echo -e "${YELLOW}⚠${NC}  WARNING: Port $port ($name) is already in use"
-        ((WARNINGS++))
-    else
-        echo -e "${GREEN}✓${NC} Port $port ($name) is available"
-    fi
-done
+        if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+            echo -e "${YELLOW}⚠${NC}  WARNING: Port $port ($name) is already in use"
+            ((WARNINGS++))
+        else
+            echo -e "${GREEN}✓${NC} Port $port ($name) is available"
+        fi
+    done
+fi
 
 echo ""
 echo -e "${BLUE}Checking required directories...${NC}"

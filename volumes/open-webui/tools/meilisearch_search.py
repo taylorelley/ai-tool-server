@@ -100,8 +100,7 @@ class Tools:
                             "done": True
                         }
                     }
-                }
-            )
+                )
 
             # Format results
             if not results.get("hits"):
@@ -145,5 +144,5 @@ class Tools:
                             "done": True
                         }
                     }
-                }
+                )
             return error_msg

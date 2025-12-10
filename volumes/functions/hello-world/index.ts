@@ -1,7 +1,7 @@
 // Example Edge Function - Hello World
 // Access at: http://localhost:8000/functions/v1/hello-world
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@release-2025.11.17/http/server.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

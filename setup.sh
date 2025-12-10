@@ -590,8 +590,12 @@ if prompt_yes_no "Configure OAuth/OIDC for SSO?" "n"; then
     replace_env_value "OAUTH_PROVIDER_NAME" "$OAUTH_NAME"
 
     prompt_with_default "OpenID Provider URL (leave empty if using base URL)" "" OPENID_URL
+    # Always set OPENID_PROVIDER_URL when OAuth is configured
     if [ -n "$OPENID_URL" ]; then
         replace_env_value "OPENID_PROVIDER_URL" "$OPENID_URL"
+    else
+        # Fallback to OAUTH_URL if no separate OpenID URL provided
+        replace_env_value "OPENID_PROVIDER_URL" "$OAUTH_URL"
     fi
 
     prompt_with_default "OAuth Client ID" "" OAUTH_CLIENT_ID
@@ -781,7 +785,7 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     fi
 
     # OAuth Configuration (if configured)
-    if [ -n "$OPENID_URL" ]; then
+    if [ "$OAUTH_CONFIGURED" = true ]; then
         OVERRIDE_CONTENT+="      - ENABLE_OAUTH_SIGNUP=\${ENABLE_OAUTH_SIGNUP}\n"
         OVERRIDE_CONTENT+="      - ENABLE_OAUTH_PERSISTENT_CONFIG=\${ENABLE_OAUTH_PERSISTENT_CONFIG}\n"
         OVERRIDE_CONTENT+="      - OAUTH_MERGE_ACCOUNTS_BY_EMAIL=\${OAUTH_MERGE_ACCOUNTS_BY_EMAIL}\n"
