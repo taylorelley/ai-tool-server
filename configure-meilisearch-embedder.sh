@@ -59,18 +59,30 @@ fi
 
 echo "✓ Meilisearch is running"
 
-# Build embedder configuration JSON
+# Function to escape strings for JSON
+json_escape() {
+    local string="$1"
+    # Escape backslashes first, then quotes, newlines, tabs, etc.
+    string="${string//\\/\\\\}"  # \ -> \\
+    string="${string//\"/\\\"}"  # " -> \"
+    string="${string//$'\n'/\\n}"  # newline -> \n
+    string="${string//$'\r'/\\r}"  # carriage return -> \r
+    string="${string//$'\t'/\\t}"  # tab -> \t
+    echo "$string"
+}
+
+# Build embedder configuration JSON with proper escaping
 echo "Building embedder configuration..."
 EMBEDDER_CONFIG="{"
-EMBEDDER_CONFIG+="\"source\":\"${EMBEDDER_SOURCE}\""
-EMBEDDER_CONFIG+=",\"model\":\"${EMBEDDER_MODEL}\""
+EMBEDDER_CONFIG+="\"source\":\"$(json_escape "${EMBEDDER_SOURCE}")\""
+EMBEDDER_CONFIG+=",\"model\":\"$(json_escape "${EMBEDDER_MODEL}")\""
 
 if [ -n "$EMBEDDER_API_KEY" ]; then
-    EMBEDDER_CONFIG+=",\"apiKey\":\"${EMBEDDER_API_KEY}\""
+    EMBEDDER_CONFIG+=",\"apiKey\":\"$(json_escape "${EMBEDDER_API_KEY}")\""
 fi
 
 if [ -n "$EMBEDDER_URL" ]; then
-    EMBEDDER_CONFIG+=",\"url\":\"${EMBEDDER_URL}\""
+    EMBEDDER_CONFIG+=",\"url\":\"$(json_escape "${EMBEDDER_URL}")\""
 fi
 
 if [ -n "$EMBEDDER_DIMENSIONS" ]; then
@@ -78,9 +90,7 @@ if [ -n "$EMBEDDER_DIMENSIONS" ]; then
 fi
 
 if [ -n "$EMBEDDER_DOC_TEMPLATE" ]; then
-    # Escape the template for JSON
-    ESCAPED_TEMPLATE=$(echo "$EMBEDDER_DOC_TEMPLATE" | sed 's/"/\\"/g')
-    EMBEDDER_CONFIG+=",\"documentTemplate\":\"${ESCAPED_TEMPLATE}\""
+    EMBEDDER_CONFIG+=",\"documentTemplate\":\"$(json_escape "${EMBEDDER_DOC_TEMPLATE}")\""
 fi
 
 EMBEDDER_CONFIG+="}"
@@ -94,11 +104,13 @@ echo "  Index: ${INDEX_NAME}"
 # Configure the embedder via API
 echo ""
 echo "Configuring embedder in Meilisearch..."
+# Escape embedder name for JSON key
+ESCAPED_EMBEDDER_NAME=$(json_escape "${EMBEDDER_NAME}")
 EMBEDDER_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
     "http://localhost:7700/indexes/${INDEX_NAME}/settings/embedders" \
     -H "Authorization: Bearer ${MEILI_KEY}" \
     -H "Content-Type: application/json" \
-    -d "{\"${EMBEDDER_NAME}\":${EMBEDDER_CONFIG}}")
+    -d "{\"${ESCAPED_EMBEDDER_NAME}\":${EMBEDDER_CONFIG}}")
 
 # Extract HTTP code from response
 HTTP_CODE=$(echo "$EMBEDDER_RESPONSE" | tail -n1)

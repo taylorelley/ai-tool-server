@@ -100,6 +100,18 @@ generate_long_secret() {
     openssl rand -hex $(($length / 2))
 }
 
+# Function to escape strings for JSON
+json_escape() {
+    local string="$1"
+    # Escape backslashes first, then quotes, newlines, tabs, etc.
+    string="${string//\\/\\\\}"  # \ -> \\
+    string="${string//\"/\\\"}"  # " -> \"
+    string="${string//$'\n'/\\n}"  # newline -> \n
+    string="${string//$'\r'/\\r}"  # carriage return -> \r
+    string="${string//$'\t'/\\t}"  # tab -> \t
+    echo "$string"
+}
+
 # Detect sed version and set appropriate flags
 if sed --version 2>&1 | grep -q GNU; then
     SED_INPLACE=(-i)
@@ -882,17 +894,17 @@ if whiptail --title "Start the Stack?" \
                 EMBEDDER_DIMENSIONS=$(grep -m1 MEILISEARCH_EMBEDDER_DIMENSIONS .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
                 EMBEDDER_DOC_TEMPLATE=$(grep -m1 MEILISEARCH_EMBEDDER_DOCUMENT_TEMPLATE .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
 
-                # Build embedder configuration JSON
+                # Build embedder configuration JSON with proper escaping
                 EMBEDDER_CONFIG="{"
-                EMBEDDER_CONFIG+="\"source\":\"${EMBEDDER_SOURCE}\""
-                EMBEDDER_CONFIG+=",\"model\":\"${EMBEDDER_MODEL}\""
+                EMBEDDER_CONFIG+="\"source\":\"$(json_escape "${EMBEDDER_SOURCE}")\""
+                EMBEDDER_CONFIG+=",\"model\":\"$(json_escape "${EMBEDDER_MODEL}")\""
 
                 if [ -n "$EMBEDDER_API_KEY" ]; then
-                    EMBEDDER_CONFIG+=",\"apiKey\":\"${EMBEDDER_API_KEY}\""
+                    EMBEDDER_CONFIG+=",\"apiKey\":\"$(json_escape "${EMBEDDER_API_KEY}")\""
                 fi
 
                 if [ -n "$EMBEDDER_URL" ]; then
-                    EMBEDDER_CONFIG+=",\"url\":\"${EMBEDDER_URL}\""
+                    EMBEDDER_CONFIG+=",\"url\":\"$(json_escape "${EMBEDDER_URL}")\""
                 fi
 
                 if [ -n "$EMBEDDER_DIMENSIONS" ]; then
@@ -900,19 +912,19 @@ if whiptail --title "Start the Stack?" \
                 fi
 
                 if [ -n "$EMBEDDER_DOC_TEMPLATE" ]; then
-                    # Escape the template for JSON
-                    ESCAPED_TEMPLATE=$(echo "$EMBEDDER_DOC_TEMPLATE" | sed 's/"/\\"/g')
-                    EMBEDDER_CONFIG+=",\"documentTemplate\":\"${ESCAPED_TEMPLATE}\""
+                    EMBEDDER_CONFIG+=",\"documentTemplate\":\"$(json_escape "${EMBEDDER_DOC_TEMPLATE}")\""
                 fi
 
                 EMBEDDER_CONFIG+="}"
 
-                # Configure the embedder via API
-                EMBEDDER_RESPONSE=$(curl -s -X PATCH \
+                # Configure the embedder via API (with -f for fail-on-error)
+                # Escape embedder name for JSON key
+                ESCAPED_EMBEDDER_NAME=$(json_escape "${EMBEDDER_NAME}")
+                EMBEDDER_RESPONSE=$(curl -sf -X PATCH \
                     "http://localhost:7700/indexes/${INDEX_NAME}/settings/embedders" \
                     -H "Authorization: Bearer ${MEILI_KEY}" \
                     -H "Content-Type: application/json" \
-                    -d "{\"${EMBEDDER_NAME}\":${EMBEDDER_CONFIG}}" 2>&1)
+                    -d "{\"${ESCAPED_EMBEDDER_NAME}\":${EMBEDDER_CONFIG}}" 2>&1)
 
                 if [ $? -eq 0 ]; then
                     whiptail --title "Embedder Configured! ✨" \
