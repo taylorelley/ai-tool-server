@@ -562,6 +562,133 @@ else
     replace_env_value "VITE_MEILISEARCH_EMBEDDER" "default"
 fi
 
+# Meilisearch Embedder Configuration
+EMBEDDER_CONFIGURED=false
+if prompt_yes_no "Configure vector search embeddings for Meilisearch?" "n"; then
+    # Build list of available providers based on what's already configured
+    PROVIDER_OPTIONS=()
+    PROVIDER_COUNT=0
+
+    if [ -n "$OPENAI_KEY" ]; then
+        PROVIDER_OPTIONS+=("OpenAI" "Use OpenAI embeddings (text-embedding-3-small)")
+        ((PROVIDER_COUNT++))
+    fi
+
+    if [ -n "$OLLAMA_URL" ]; then
+        PROVIDER_OPTIONS+=("Ollama" "Use local Ollama embeddings (nomic-embed-text)")
+        ((PROVIDER_COUNT++))
+    fi
+
+    # Always offer custom option
+    PROVIDER_OPTIONS+=("Custom" "Configure custom REST endpoint")
+    ((PROVIDER_COUNT++))
+
+    if [ $PROVIDER_COUNT -eq 0 ]; then
+        whiptail --title "No Providers Configured" \
+                 --msgbox "\nNo AI providers configured yet.\n\nPlease configure OpenAI or Ollama first, or use a custom endpoint." \
+                 12 60
+    else
+        EMBEDDER_PROVIDER=$(whiptail --title "Select Embedder Provider" \
+                                     --menu "\nChoose an embedder provider for vector search:" \
+                                     18 70 $PROVIDER_COUNT \
+                                     "${PROVIDER_OPTIONS[@]}" \
+                                     3>&1 1>&2 2>&3)
+
+        if [ $? -eq 0 ] && [ -n "$EMBEDDER_PROVIDER" ]; then
+            EMBEDDER_CONFIGURED=true
+
+            case "$EMBEDDER_PROVIDER" in
+                "OpenAI")
+                    replace_env_value "MEILISEARCH_EMBEDDER_SOURCE" "openAi"
+
+                    # Prompt for model with common defaults
+                    MODEL_CHOICE=$(whiptail --title "OpenAI Embedding Model" \
+                                            --menu "\nSelect OpenAI embedding model:" \
+                                            15 70 3 \
+                                            "text-embedding-3-small" "1536 dimensions, $0.02/1M tokens (recommended)" \
+                                            "text-embedding-3-large" "3072 dimensions, $0.13/1M tokens" \
+                                            "text-embedding-ada-002" "1536 dimensions, legacy model" \
+                                            3>&1 1>&2 2>&3)
+
+                    if [ $? -eq 0 ] && [ -n "$MODEL_CHOICE" ]; then
+                        replace_env_value "MEILISEARCH_EMBEDDER_MODEL" "$MODEL_CHOICE"
+                    else
+                        replace_env_value "MEILISEARCH_EMBEDDER_MODEL" "text-embedding-3-small"
+                    fi
+
+                    replace_env_value "MEILISEARCH_EMBEDDER_API_KEY" "$OPENAI_KEY"
+                    replace_env_value "MEILISEARCH_EMBEDDER_URL" ""
+                    ;;
+
+                "Ollama")
+                    replace_env_value "MEILISEARCH_EMBEDDER_SOURCE" "ollama"
+
+                    prompt_with_default "Ollama embedding model" "nomic-embed-text" OLLAMA_EMBED_MODEL
+                    replace_env_value "MEILISEARCH_EMBEDDER_MODEL" "$OLLAMA_EMBED_MODEL"
+
+                    # Use the internal Docker hostname for Ollama
+                    OLLAMA_INTERNAL_URL="http://host.docker.internal:11434"
+                    replace_env_value "MEILISEARCH_EMBEDDER_URL" "$OLLAMA_INTERNAL_URL"
+                    replace_env_value "MEILISEARCH_EMBEDDER_API_KEY" ""
+                    ;;
+
+                "Custom")
+                    whiptail --title "Custom Embedder" \
+                             --msgbox "\nConfigure a custom REST endpoint for embeddings.\n\nThe endpoint should accept POST requests with documents and return embeddings." \
+                             12 60
+
+                    replace_env_value "MEILISEARCH_EMBEDDER_SOURCE" "rest"
+
+                    prompt_with_default "Embedder API URL" "http://localhost:8080/embed" CUSTOM_EMBED_URL
+                    replace_env_value "MEILISEARCH_EMBEDDER_URL" "$CUSTOM_EMBED_URL"
+
+                    prompt_with_default "Embedding model name" "custom-embedder" CUSTOM_MODEL
+                    replace_env_value "MEILISEARCH_EMBEDDER_MODEL" "$CUSTOM_MODEL"
+
+                    if prompt_yes_no "Does the endpoint require an API key?" "n"; then
+                        prompt_password "API Key" CUSTOM_API_KEY
+                        replace_env_value "MEILISEARCH_EMBEDDER_API_KEY" "$CUSTOM_API_KEY"
+                    else
+                        replace_env_value "MEILISEARCH_EMBEDDER_API_KEY" ""
+                    fi
+
+                    prompt_with_default "Embedding dimensions (leave empty for auto-detect)" "" EMBED_DIMENSIONS
+                    replace_env_value "MEILISEARCH_EMBEDDER_DIMENSIONS" "$EMBED_DIMENSIONS"
+                    ;;
+            esac
+
+            # Common embedder settings
+            prompt_with_default "Embedder name" "default" EMBEDDER_NAME
+            replace_env_value "MEILISEARCH_EMBEDDER_NAME" "$EMBEDDER_NAME"
+
+            if prompt_yes_no "Configure document template for embeddings?" "n"; then
+                whiptail --title "Document Template" \
+                         --msgbox "\nDocument templates control which fields are embedded.\n\nExample: {{doc.title}} {{doc.description}}\n\nLeave empty to embed all fields." \
+                         14 60
+
+                prompt_with_default "Document template" "" DOC_TEMPLATE
+                replace_env_value "MEILISEARCH_EMBEDDER_DOCUMENT_TEMPLATE" "$DOC_TEMPLATE"
+            else
+                replace_env_value "MEILISEARCH_EMBEDDER_DOCUMENT_TEMPLATE" ""
+            fi
+
+            replace_env_value "MEILISEARCH_EMBEDDER_ENABLED" "true"
+        fi
+    fi
+fi
+
+if [ "$EMBEDDER_CONFIGURED" != true ]; then
+    # Set defaults for no embedder
+    replace_env_value "MEILISEARCH_EMBEDDER_ENABLED" "false"
+    replace_env_value "MEILISEARCH_EMBEDDER_NAME" "default"
+    replace_env_value "MEILISEARCH_EMBEDDER_SOURCE" ""
+    replace_env_value "MEILISEARCH_EMBEDDER_MODEL" ""
+    replace_env_value "MEILISEARCH_EMBEDDER_API_KEY" ""
+    replace_env_value "MEILISEARCH_EMBEDDER_URL" ""
+    replace_env_value "MEILISEARCH_EMBEDDER_DIMENSIONS" ""
+    replace_env_value "MEILISEARCH_EMBEDDER_DOCUMENT_TEMPLATE" ""
+fi
+
 CURRENT_STEP=7
 
 # Step 7: Generate docker-compose.override.yml
@@ -723,6 +850,79 @@ if whiptail --title "Start the Stack?" \
         whiptail --title "Stack Started! 🚀" \
                  --msgbox "\n✓ AI Tool Server Stack is now running!\n\nYour services are starting up:\n\n  Open WebUI:      ${OPEN_WEBUI_URL}\n  Langflow:        ${LANGFLOW_URL}\n  Supabase Studio: ${SITE_URL}\n\nNote: Services may take 1-2 minutes to fully initialize.\n\nCheck status: docker compose ps\nView logs: docker compose logs -f" \
                  18 70
+
+        # Configure Meilisearch embedder if enabled
+        if [ "$EMBEDDER_CONFIGURED" = true ]; then
+            whiptail --title "Configuring Embedder" \
+                     --msgbox "\nConfiguring Meilisearch vector embeddings...\n\nWaiting for Meilisearch to be ready..." \
+                     10 60
+
+            # Wait for Meilisearch to be healthy (max 60 seconds)
+            WAIT_COUNT=0
+            MAX_WAIT=60
+            until docker compose exec -T meilisearch curl -sf http://localhost:7700/health > /dev/null 2>&1 || [ $WAIT_COUNT -eq $MAX_WAIT ]; do
+                sleep 1
+                ((WAIT_COUNT++))
+            done
+
+            if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
+                whiptail --title "Embedder Configuration Warning" \
+                         --msgbox "\n⚠ Meilisearch didn't become ready in time.\n\nYou can configure embeddings manually later using:\n  ./configure-meilisearch-embedder.sh" \
+                         12 60
+            else
+                # Load configuration from .env
+                MEILI_KEY=$(grep -m1 MEILI_MASTER_KEY .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_SOURCE=$(grep -m1 MEILISEARCH_EMBEDDER_SOURCE .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_MODEL=$(grep -m1 MEILISEARCH_EMBEDDER_MODEL .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_NAME=$(grep -m1 MEILISEARCH_EMBEDDER_NAME .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_API_KEY=$(grep -m1 MEILISEARCH_EMBEDDER_API_KEY .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_URL=$(grep -m1 MEILISEARCH_EMBEDDER_URL .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_DIMENSIONS=$(grep -m1 MEILISEARCH_EMBEDDER_DIMENSIONS .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+                EMBEDDER_DOC_TEMPLATE=$(grep -m1 MEILISEARCH_EMBEDDER_DOCUMENT_TEMPLATE .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+
+                # Build embedder configuration JSON
+                EMBEDDER_CONFIG="{"
+                EMBEDDER_CONFIG+="\"source\":\"${EMBEDDER_SOURCE}\""
+                EMBEDDER_CONFIG+=",\"model\":\"${EMBEDDER_MODEL}\""
+
+                if [ -n "$EMBEDDER_API_KEY" ]; then
+                    EMBEDDER_CONFIG+=",\"apiKey\":\"${EMBEDDER_API_KEY}\""
+                fi
+
+                if [ -n "$EMBEDDER_URL" ]; then
+                    EMBEDDER_CONFIG+=",\"url\":\"${EMBEDDER_URL}\""
+                fi
+
+                if [ -n "$EMBEDDER_DIMENSIONS" ]; then
+                    EMBEDDER_CONFIG+=",\"dimensions\":${EMBEDDER_DIMENSIONS}"
+                fi
+
+                if [ -n "$EMBEDDER_DOC_TEMPLATE" ]; then
+                    # Escape the template for JSON
+                    ESCAPED_TEMPLATE=$(echo "$EMBEDDER_DOC_TEMPLATE" | sed 's/"/\\"/g')
+                    EMBEDDER_CONFIG+=",\"documentTemplate\":\"${ESCAPED_TEMPLATE}\""
+                fi
+
+                EMBEDDER_CONFIG+="}"
+
+                # Configure the embedder via API
+                EMBEDDER_RESPONSE=$(curl -s -X PATCH \
+                    "http://localhost:7700/indexes/web_docs/settings/embedders" \
+                    -H "Authorization: Bearer ${MEILI_KEY}" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"${EMBEDDER_NAME}\":${EMBEDDER_CONFIG}}" 2>&1)
+
+                if [ $? -eq 0 ]; then
+                    whiptail --title "Embedder Configured! ✨" \
+                             --msgbox "\n✓ Meilisearch embedder configured successfully!\n\nEmbedder: ${EMBEDDER_NAME}\nSource: ${EMBEDDER_SOURCE}\nModel: ${EMBEDDER_MODEL}\n\nVector search is now available in the hybrid search UI." \
+                             16 70
+                else
+                    whiptail --title "Embedder Configuration Failed" \
+                             --msgbox "\n✗ Failed to configure embedder.\n\nError: ${EMBEDDER_RESPONSE}\n\nYou can configure it manually later." \
+                             14 70
+                fi
+            fi
+        fi
     else
         whiptail --title "Error Starting Stack" \
                  --msgbox "\n✗ Docker Compose failed:\n\n${COMPOSE_OUTPUT}\n\nCommon issues:\n  • Docker daemon not running\n  • Port conflicts\n  • Missing images\n  • Insufficient disk space\n\nTry manually: docker compose up -d" \
