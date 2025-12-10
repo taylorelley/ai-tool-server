@@ -22,157 +22,6 @@ CURRENT_STEP=0
 
 # Whiptail is now a required dependency (checked in pre-flight)
 
-# Center text function
-center_text() {
-    local text=$1
-    local width=${2:-$TERM_WIDTH}
-    local text_length=${#text}
-    local padding=$(( (width - text_length) / 2 ))
-    printf "%${padding}s%s\n" "" "$text"
-}
-
-# Show main header
-show_header() {
-    clear
-    echo ""
-    echo ""
-    echo -e "${CYAN}${BOLD}"
-    center_text "╔════════════════════════════════════════════════════════════════╗"
-    center_text "║                                                                ║"
-    center_text "║           🚀  AI Tool Server Stack Installation  🚀            ║"
-    center_text "║                                                                ║"
-    center_text "╚════════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
-    echo ""
-    center_text "${DIM}Langflow  •  Open WebUI  •  Supabase  •  Meilisearch${NC}"
-    echo ""
-    echo ""
-}
-
-# Progress bar function
-print_progress_bar() {
-    local current=$1
-    local total=$2
-    local width=50
-    local percentage=$((current * 100 / total))
-    local filled=$((current * width / total))
-    local empty=$((width - filled))
-
-    echo ""
-    printf "   "
-    echo -ne "${CYAN}${BOLD}Progress: ${NC}"
-    echo -ne "${GREEN}["
-    printf "%${filled}s" | tr ' ' '█'
-    printf "%${empty}s" | tr ' ' '░'
-    echo -e "]${NC} ${WHITE}${percentage}%%${NC}"
-    echo ""
-}
-
-# TUI Helper Functions
-print_step_header() {
-    local step_num=$1
-    local step_title=$2
-    CURRENT_STEP=$step_num
-
-    # Clear screen and show progress
-    clear
-    echo ""
-    echo ""
-
-    # Show step counter with color
-    echo -e "${MAGENTA}${BOLD}"
-    center_text "╔════════════════════════════════════════════════════════════════╗"
-    center_text "║                    STEP ${step_num} OF ${TOTAL_STEPS}                              ║"
-    center_text "╚════════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
-
-    # Progress bar
-    print_progress_bar "$step_num" "$TOTAL_STEPS"
-
-    # Step title
-    echo ""
-    echo -e "${CYAN}${BOLD}▸ ${WHITE}${step_title}${NC}"
-    echo ""
-    print_separator
-    echo ""
-}
-
-print_subsection() {
-    echo ""
-    echo -e "${YELLOW}┌─${NC} ${BOLD}$1${NC}"
-}
-
-print_step_complete() {
-    echo ""
-    echo -e "   ${GREEN}${BOLD}✓ Step completed${NC}"
-    sleep 0.5
-}
-
-print_info() {
-    echo -e "${BLUE}${INFO}${NC}  $1"
-}
-
-print_success() {
-    echo -e "${GREEN}${CHECKMARK}${NC}  $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}${WARNING}${NC}  $1"
-}
-
-print_error() {
-    echo -e "${RED}${CROSS}${NC}  $1"
-}
-
-# Enhanced message functions (Proxmox-style)
-msg_info() {
-    echo -ne " ${BLUE}${INFO}${NC} ${BOLD}$1${NC}"
-}
-
-msg_ok() {
-    echo -e " ${GREEN}${CHECKMARK}${NC} ${BOLD}$1${NC}"
-}
-
-msg_error() {
-    echo -e " ${RED}${CROSS}${NC} ${BOLD}$1${NC}"
-}
-
-msg_warn() {
-    echo -e " ${YELLOW}${WARNING}${NC} ${BOLD}$1${NC}"
-}
-
-print_separator() {
-    echo -e "${GRAY}─────────────────────────────────────────────────────────────${NC}"
-}
-
-print_prompt() {
-    echo -e "${CYAN}▸${NC} $1"
-}
-
-print_config_item() {
-    local label=$1
-    local value=$2
-    echo -e "  ${DIM}${label}:${NC} ${WHITE}${value}${NC}"
-}
-
-# Spinner for long operations (Proxmox-style)
-show_spinner() {
-    local pid=$1
-    local message=$2
-    local spin='-\|/'
-    local i=0
-
-    echo -ne " ${BLUE}${INFO}${NC} ${BOLD}${message}${NC} "
-
-    while kill -0 $pid 2>/dev/null; do
-        i=$(( (i+1) %4 ))
-        echo -ne "\r ${BLUE}${INFO}${NC} ${BOLD}${message}${NC} ${spin:$i:1}"
-        sleep 0.1
-    done
-
-    echo -ne "\r"
-}
-
 # Welcome screen
 whiptail --title "AI Tool Server Stack - Setup Wizard" \
          --msgbox "\n🚀  Welcome to AI Tool Server Stack Installation  🚀\n\nThis wizard will guide you through configuring:\n\n  • Langflow - AI workflow automation\n  • Open WebUI - Chat interface\n  • Supabase - Backend infrastructure\n  • Meilisearch - Document search\n\nThe setup will take approximately 5 minutes.\n\nPress OK to begin." \
@@ -270,7 +119,16 @@ replace_env_value() {
     local key=$1
     local value=$2
 
-    sed "${SED_INPLACE[@]}" "s|^${key}=.*|${key}=${value}|" .env
+    # Escape special characters for sed (order matters!)
+    # 1. Backslash first (so we don't re-escape our own escapes)
+    # 2. Then ampersand (sed replacement special char)
+    # 3. Then pipe (our delimiter)
+    local escaped_value="$value"
+    escaped_value="${escaped_value//\\/\\\\}"  # \ -> \\
+    escaped_value="${escaped_value//&/\\&}"    # & -> \&
+    escaped_value="${escaped_value//|/\\|}"    # | -> \|
+
+    sed "${SED_INPLACE[@]}" "s|^${key}=.*|${key}=${escaped_value}|" .env
 }
 
 # Function to prompt for input with default value
@@ -659,19 +517,22 @@ if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
             MEILI_KEY=$(grep -m1 MEILI_MASTER_KEY .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
 
             if [ -z "$MEILI_KEY" ]; then
-                echo "ERROR: MEILI_MASTER_KEY not found or empty in .env file" >&2
-                echo "Please ensure setup.sh has generated secrets properly" >&2
-                exit 1
-            fi
+                # Degrade gracefully instead of failing hard
+                whiptail --title "Missing Meilisearch Key" \
+                         --msgbox "\n⚠ WARNING: MEILI_MASTER_KEY not found in .env\n\nScrapix requires a Meilisearch master key to function.\nSkipping Scrapix configuration.\n\nYou can configure it later by re-running setup.sh" \
+                         14 60
+                SCRAPIX_CONFIGURED=false
+            else
 
-            # Create JSON config as a single-line string (no whitespace to avoid parsing issues)
-            CRAWLER_CONFIG="{\"start_urls\":${SCRAPIX_URLS},\"meilisearch_url\":\"http://meilisearch:7700\",\"meilisearch_api_key\":\"${MEILI_KEY}\",\"meilisearch_index_uid\":\"web_docs\",\"strategy\":\"docssearch\",\"headless\":true,\"batch_size\":100,\"urls_to_exclude\":[\"*/api-reference/*\",\"*/changelog/*\"],\"additional_request_headers\":{}}"
+                # Create JSON config as a single-line string (no whitespace to avoid parsing issues)
+                CRAWLER_CONFIG="{\"start_urls\":${SCRAPIX_URLS},\"meilisearch_url\":\"http://meilisearch:7700\",\"meilisearch_api_key\":\"${MEILI_KEY}\",\"meilisearch_index_uid\":\"web_docs\",\"strategy\":\"docssearch\",\"headless\":true,\"batch_size\":100,\"urls_to_exclude\":[\"*/api-reference/*\",\"*/changelog/*\"],\"additional_request_headers\":{}}"
 
-            cat > scrapix.env <<EOF
+                cat > scrapix.env <<EOF
 # Scrapix Configuration
 # Auto-generated by setup.sh
 CRAWLER_CONFIG=${CRAWLER_CONFIG}
 EOF
+            fi
         fi
 fi
 
