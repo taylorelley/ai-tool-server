@@ -19,6 +19,13 @@ echo "Meilisearch Tool Installation for Open WebUI"
 echo -e "==============================================${NC}"
 echo ""
 
+# Check if jq is installed
+if ! command -v jq &> /dev/null; then
+    echo -e "${RED}✗ Error: jq is required but not installed${NC}"
+    echo "Install jq: sudo apt-get install jq (Debian/Ubuntu) or sudo yum install jq (RHEL/CentOS)"
+    exit 1
+fi
+
 # Check if .env exists
 if [ ! -f .env ]; then
     echo -e "${RED}✗ Error: .env file not found${NC}"
@@ -56,12 +63,13 @@ LOGIN_RESPONSE=$(curl -s -X POST "${OPEN_WEBUI_URL}/api/v1/auths/signin" \
     -H "Content-Type: application/json" \
     -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}")
 
-# Extract token
-TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*' | sed 's/"token":"//')
+# Extract token using jq for robust JSON parsing
+TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.token // empty')
 
 if [ -z "$TOKEN" ]; then
     echo -e "${RED}✗ Login failed${NC}"
     echo "Please check your credentials"
+    echo "Response: $LOGIN_RESPONSE"
     exit 1
 fi
 

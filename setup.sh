@@ -243,7 +243,7 @@ fi
     mkdir -p volumes/playwright volumes/meilisearch
     echo "80"; sleep 0.2
     mkdir -p volumes/db volumes/api volumes/functions volumes/logs volumes/pooler volumes/storage
-    chmod -R 777 volumes/langflow/data
+    chmod -R 770 volumes/langflow/data
     echo "100"; sleep 0.2
 } | whiptail --title "Initializing" --gauge "Creating environment and volume directories..." 8 70 0
 
@@ -289,9 +289,9 @@ prompt_with_default() {
 
     # If user cancelled, use default
     if [ $? -eq 0 ]; then
-        eval $varname="'$result'"
+        printf -v "$varname" '%s' "$result"
     else
-        eval $varname="'$default'"
+        printf -v "$varname" '%s' "$default"
     fi
 }
 
@@ -307,7 +307,7 @@ prompt_password() {
                      10 70 \
                      3>&1 1>&2 2>&3)
 
-    eval $varname="'$result'"
+    printf -v "$varname" '%s' "$result"
 }
 
 # Function to prompt for yes/no
@@ -581,7 +581,9 @@ fi
 CURRENT_STEP=6
 
 # Step 6: Meilisearch & Scrapix
+SCRAPIX_CONFIGURED=false
 if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
+        SCRAPIX_CONFIGURED=true
         # Check if config already exists
         if [ -f scrapix.env ]; then
             whiptail --title "Config Exists" \
@@ -774,6 +776,21 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     # PostgreSQL option
     if prompt_yes_no "Use PostgreSQL for Open WebUI instead of SQLite?" "n"; then
         OVERRIDE_CONTENT+="      - DATABASE_URL=postgresql://postgres:\${POSTGRES_PASSWORD}@db:5432/postgres\n"
+    fi
+
+    # Scrapix service (only if configured)
+    if [ "$SCRAPIX_CONFIGURED" = true ]; then
+        OVERRIDE_CONTENT+="\n  scrapix:\n"
+        OVERRIDE_CONTENT+="    container_name: scrapix\n"
+        OVERRIDE_CONTENT+="    image: getmeili/scrapix:\${SCRAPIX_VERSION:-latest}\n"
+        OVERRIDE_CONTENT+="    restart: \"no\"\n"
+        OVERRIDE_CONTENT+="    depends_on:\n"
+        OVERRIDE_CONTENT+="      meilisearch:\n"
+        OVERRIDE_CONTENT+="        condition: service_healthy\n"
+        OVERRIDE_CONTENT+="    env_file:\n"
+        OVERRIDE_CONTENT+="      - scrapix.env\n"
+        OVERRIDE_CONTENT+="    networks:\n"
+        OVERRIDE_CONTENT+="      - ai-tools-net\n"
     fi
 
     # Write the override file

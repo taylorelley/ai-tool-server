@@ -138,7 +138,9 @@ class Tools:
                     }
                 )
             return error_msg
-        except Exception as e:
+        # Broad exception handler intentionally catches all errors to prevent tool crashes
+        # that would break Open WebUI's chat interface. Errors are still surfaced to the user.
+        except Exception as e:  # noqa: BLE001
             error_msg = f"Unexpected error: {e!s}"
             if __event_emitter__:
                 __event_emitter__(
