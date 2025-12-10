@@ -30,6 +30,10 @@ class Tools:
             default=5,
             description="Number of results to return"
         )
+        REQUEST_TIMEOUT: int = Field(
+            default=10,
+            description="Timeout in seconds for Meilisearch requests"
+        )
 
     def __init__(self):
         # Auto-configure from environment variables if available
@@ -37,7 +41,8 @@ class Tools:
             MEILISEARCH_URL=os.getenv("MEILISEARCH_URL", "http://meilisearch:7700"),
             MEILISEARCH_API_KEY=os.getenv("MEILISEARCH_API_KEY", ""),
             MEILISEARCH_INDEX=os.getenv("MEILISEARCH_INDEX", "web_docs"),
-            RESULTS_LIMIT=int(os.getenv("MEILISEARCH_RESULTS_LIMIT", "5"))
+            RESULTS_LIMIT=int(os.getenv("MEILISEARCH_RESULTS_LIMIT", "5")),
+            REQUEST_TIMEOUT=int(os.getenv("MEILISEARCH_REQUEST_TIMEOUT", "10"))
         )
 
     def search_docs(
@@ -87,7 +92,7 @@ class Tools:
             }
 
             # Execute search
-            response = requests.post(search_url, json=payload, headers=headers, timeout=10)
+            response = requests.post(search_url, json=payload, headers=headers, timeout=self.valves.REQUEST_TIMEOUT)
             response.raise_for_status()
             results = response.json()
 

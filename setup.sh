@@ -9,51 +9,16 @@
 
 set -e
 
-# Enhanced color palette
+# Color palette
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-GRAY='\033[0;90m'
 NC='\033[0m'
-
-# Text formatting
-BOLD='\033[1m'
-DIM='\033[2m'
-UNDERLINE='\033[4m'
-
-# Icons for status messages
-CHECKMARK="✓"
-CROSS="✗"
-INFO="ℹ"
-WARNING="⚠"
-ROCKET="🚀"
-SPARKLES="✨"
-PARTY="🎉"
-BOOKS="📚"
-
-# Box drawing characters
-BOX_H="━"
-BOX_V="┃"
-BOX_TL="┏"
-BOX_TR="┓"
-BOX_BL="┗"
-BOX_BR="┛"
-BOX_VR="┣"
-BOX_VL="┫"
-BOX_HU="┻"
-BOX_HD="┳"
 
 # Progress tracking
 TOTAL_STEPS=7
 CURRENT_STEP=0
-
-# Terminal dimensions
-TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
-TERM_HEIGHT=$(tput lines 2>/dev/null || echo 24)
 
 # Whiptail is now a required dependency (checked in pre-flight)
 
