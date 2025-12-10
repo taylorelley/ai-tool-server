@@ -8,7 +8,7 @@ required_open_webui_version: 0.3.0
 
 import os
 import requests
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 from pydantic import BaseModel, Field
 
 
@@ -41,14 +41,14 @@ class Tools:
             MEILISEARCH_URL=os.getenv("MEILISEARCH_URL", "http://meilisearch:7700"),
             MEILISEARCH_API_KEY=os.getenv("MEILISEARCH_API_KEY", ""),
             MEILISEARCH_INDEX=os.getenv("MEILISEARCH_INDEX", "web_docs"),
-            RESULTS_LIMIT=int(os.getenv("MEILISEARCH_RESULTS_LIMIT", "5")),
-            REQUEST_TIMEOUT=int(os.getenv("MEILISEARCH_REQUEST_TIMEOUT", "10"))
+            RESULTS_LIMIT=os.getenv("MEILISEARCH_RESULTS_LIMIT", 5),
+            REQUEST_TIMEOUT=os.getenv("MEILISEARCH_REQUEST_TIMEOUT", 10),
         )
 
     def search_docs(
         self,
         query: str,
-        __event_emitter__: Callable[[dict], Any] = None
+        __event_emitter__: Optional[Callable[[dict], Any]] = None,
     ) -> str:
         """
         Search indexed documentation using Meilisearch.
@@ -126,7 +126,7 @@ class Tools:
             return "\n\n".join(formatted_results)
 
         except requests.exceptions.RequestException as e:
-            error_msg = f"Error searching Meilisearch: {str(e)}"
+            error_msg = f"Error searching Meilisearch: {e!s}"
             if __event_emitter__:
                 __event_emitter__(
                     {
@@ -139,7 +139,7 @@ class Tools:
                 )
             return error_msg
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
+            error_msg = f"Unexpected error: {e!s}"
             if __event_emitter__:
                 __event_emitter__(
                     {

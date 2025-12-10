@@ -403,6 +403,7 @@ replace_env_value "SUPABASE_PUBLIC_URL" "$SUPABASE_PUBLIC_URL"
 replace_env_value "API_EXTERNAL_URL" "$API_EXTERNAL_URL"
 replace_env_value "SITE_URL" "$SITE_URL"
 replace_env_value "MEILISEARCH_URL" "$MEILISEARCH_URL"
+replace_env_value "MEILISEARCH_UI_URL" "$MEILISEARCH_UI_URL"
 
 CURRENT_STEP=2
 
@@ -580,8 +581,6 @@ fi
 CURRENT_STEP=6
 
 # Step 6: Meilisearch & Scrapix
-MEILISEARCH_CONFIGURED=true
-
 if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
         # Check if config already exists
         if [ -f scrapix.env ]; then
@@ -654,7 +653,14 @@ if prompt_yes_no "Configure Scrapix to index documentation sites?" "y"; then
             fi
 
             # Generate scrapix.env with user's URLs
-            MEILI_KEY=$(grep MEILI_MASTER_KEY .env | cut -d '=' -f2)
+            # Extract and validate MEILI_MASTER_KEY
+            MEILI_KEY=$(grep -m1 MEILI_MASTER_KEY .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+
+            if [ -z "$MEILI_KEY" ]; then
+                echo "ERROR: MEILI_MASTER_KEY not found or empty in .env file" >&2
+                echo "Please ensure setup.sh has generated secrets properly" >&2
+                exit 1
+            fi
 
             # Create JSON config as a single-line string (no whitespace to avoid parsing issues)
             CRAWLER_CONFIG="{\"start_urls\":${SCRAPIX_URLS},\"meilisearch_url\":\"http://meilisearch:7700\",\"meilisearch_api_key\":\"${MEILI_KEY}\",\"meilisearch_index_uid\":\"web_docs\",\"strategy\":\"docssearch\",\"headless\":true,\"batch_size\":100,\"urls_to_exclude\":[\"*/api-reference/*\",\"*/changelog/*\"],\"additional_request_headers\":{}}"
@@ -768,9 +774,6 @@ if [ "$SKIP_OVERRIDE" != true ]; then
     # PostgreSQL option
     if prompt_yes_no "Use PostgreSQL for Open WebUI instead of SQLite?" "n"; then
         OVERRIDE_CONTENT+="      - DATABASE_URL=postgresql://postgres:\${POSTGRES_PASSWORD}@db:5432/postgres\n"
-        OPENWEBUI_DB="PostgreSQL"
-    else
-        OPENWEBUI_DB="SQLite"
     fi
 
     # Write the override file

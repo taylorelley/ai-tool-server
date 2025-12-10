@@ -198,7 +198,7 @@ services:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
-      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,Z
     depends_on: {}
     environment:
       KONG_DATABASE: "off"
@@ -539,7 +539,7 @@ services:
       - ${POSTGRES_PORT}:5432
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
-      - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
+      - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,Z
     healthcheck:
       test:
         [
