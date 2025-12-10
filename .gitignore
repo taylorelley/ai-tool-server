@@ -5,15 +5,34 @@
 *.pem
 *.key
 
+# Generated configuration files
+scrapix.env
+docker-compose.override.yml
+
 # Docker volumes and data
-volumes/
-volumes/**/*
+volumes/db/data/
+volumes/langflow/
+volumes/open-webui/data/
+volumes/playwright/
+volumes/storage/
+volumes/meilisearch/
+
+# But keep required configuration and initialization files
+!volumes/db/*.sql
+!volumes/api/
+!volumes/api/**
+!volumes/functions/
+!volumes/functions/**
+!volumes/logs/
+!volumes/logs/**
+!volumes/pooler/
+!volumes/pooler/**
 
 # Backups
 backup-*/
 *.tar.gz
-*.sql
 *.dump
+backup*.sql
 
 # OS files
 .DS_Store
@@ -57,10 +76,10 @@ pids/
 # Custom scripts (may contain sensitive data)
 *.local.sh
 
-# Database exports
-*.sql
+# Database exports (but keep initialization SQL files)
 *.dump
 *.db
 
-# Keep template files
+# Keep template files and required SQL initialization files
 !.env.template
+!volumes/db/*.sql

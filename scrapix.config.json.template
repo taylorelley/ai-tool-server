@@ -1,0 +1,19 @@
+{
+  "start_urls": [
+    "https://docs.openwebui.com",
+    "https://docs.anthropic.com",
+    "https://platform.openai.com/docs",
+    "https://docs.meilisearch.com"
+  ],
+  "meilisearch_url": "http://meilisearch:7700",
+  "meilisearch_api_key": "${MEILI_MASTER_KEY}",
+  "meilisearch_index_uid": "web_docs",
+  "strategy": "docssearch",
+  "headless": true,
+  "batch_size": 100,
+  "urls_to_exclude": [
+    "*/api-reference/*",
+    "*/changelog/*"
+  ],
+  "additional_request_headers": {}
+}

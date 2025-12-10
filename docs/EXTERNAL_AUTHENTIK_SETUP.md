@@ -335,7 +335,7 @@ After setup, verify:
 AUTHENTIK_URL=https://auth.yourdomain.com
 OPEN_WEBUI_URL=https://chat.yourdomain.com
 LANGFLOW_URL=https://flow.yourdomain.com
-SUPABASE_PUBLIC_URL=https://api.yourdomain.com
+SUPABASE_PUBLIC_URL=https://db-api.yourdomain.com
 ```
 
 ### Update OAuth Redirect URIs in Authentik

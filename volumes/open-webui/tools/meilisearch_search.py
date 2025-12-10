@@ -1,0 +1,155 @@
+"""
+title: Meilisearch Documentation Search
+author: AI Tool Server Stack
+version: 1.1.0
+description: Search indexed documentation and websites using Meilisearch
+required_open_webui_version: 0.3.0
+"""
+
+import os
+import requests
+from typing import Callable, Any, Optional
+from pydantic import BaseModel, Field
+
+
+class Tools:
+    class Valves(BaseModel):
+        MEILISEARCH_URL: str = Field(
+            default="http://meilisearch:7700",
+            description="Meilisearch instance URL"
+        )
+        MEILISEARCH_API_KEY: str = Field(
+            default="",
+            description="Meilisearch API key (Master Key)"
+        )
+        MEILISEARCH_INDEX: str = Field(
+            default="web_docs",
+            description="Index name to search"
+        )
+        RESULTS_LIMIT: int = Field(
+            default=5,
+            description="Number of results to return"
+        )
+        REQUEST_TIMEOUT: int = Field(
+            default=10,
+            description="Timeout in seconds for Meilisearch requests"
+        )
+
+    def __init__(self):
+        # Auto-configure from environment variables if available
+        self.valves = self.Valves(
+            MEILISEARCH_URL=os.getenv("MEILISEARCH_URL", "http://meilisearch:7700"),
+            MEILISEARCH_API_KEY=os.getenv("MEILISEARCH_API_KEY", ""),
+            MEILISEARCH_INDEX=os.getenv("MEILISEARCH_INDEX", "web_docs"),
+            RESULTS_LIMIT=os.getenv("MEILISEARCH_RESULTS_LIMIT", 5),
+            REQUEST_TIMEOUT=os.getenv("MEILISEARCH_REQUEST_TIMEOUT", 10),
+        )
+
+    def search_docs(
+        self,
+        query: str,
+        __event_emitter__: Optional[Callable[[dict], Any]] = None,
+    ) -> str:
+        """
+        Search indexed documentation using Meilisearch.
+        Use this tool when users ask questions about:
+        - Open WebUI documentation
+        - Anthropic/Claude documentation
+        - OpenAI documentation
+        - Meilisearch documentation
+        - Any other indexed documentation
+
+        :param query: The search query string
+        :return: Formatted search results with titles, URLs, and content snippets
+        """
+
+        if __event_emitter__:
+            __event_emitter__(
+                {
+                    "type": "status",
+                    "data": {
+                        "description": f"Searching indexed docs for: {query}",
+                        "done": False
+                    }
+                }
+            )
+
+        try:
+            # Prepare search request
+            search_url = f"{self.valves.MEILISEARCH_URL}/indexes/{self.valves.MEILISEARCH_INDEX}/search"
+            headers = {}
+            if self.valves.MEILISEARCH_API_KEY:
+                headers["Authorization"] = f"Bearer {self.valves.MEILISEARCH_API_KEY}"
+
+            payload = {
+                "q": query,
+                "limit": self.valves.RESULTS_LIMIT,
+                "attributesToHighlight": ["content"],
+                "attributesToCrop": ["content"],
+                "cropLength": 200,
+                "highlightPreTag": "**",
+                "highlightPostTag": "**"
+            }
+
+            # Execute search
+            response = requests.post(search_url, json=payload, headers=headers, timeout=self.valves.REQUEST_TIMEOUT)
+            response.raise_for_status()
+            results = response.json()
+
+            if __event_emitter__:
+                __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": f"Found {len(results.get('hits', []))} results",
+                            "done": True
+                        }
+                    }
+                )
+
+            # Format results
+            if not results.get("hits"):
+                return "No results found in the indexed documentation."
+
+            formatted_results = []
+            for i, hit in enumerate(results["hits"], 1):
+                title = hit.get("hierarchy", {}).get("lvl0", hit.get("url", "Untitled"))
+                url = hit.get("url", "")
+                content = hit.get("_formatted", {}).get("content", hit.get("content", ""))
+
+                formatted_results.append(
+                    f"**Result {i}:** {title}\n"
+                    f"**URL:** {url}\n"
+                    f"**Content:** {content}\n"
+                )
+
+            return "\n\n".join(formatted_results)
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Error searching Meilisearch: {e!s}"
+            if __event_emitter__:
+                __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": error_msg,
+                            "done": True
+                        }
+                    }
+                )
+            return error_msg
+        # Broad exception handler intentionally catches all errors to prevent tool crashes
+        # that would break Open WebUI's chat interface. Errors are still surfaced to the user.
+        except Exception as e:  # noqa: BLE001
+            error_msg = f"Unexpected error: {e!s}"
+            if __event_emitter__:
+                __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": error_msg,
+                            "done": True
+                        }
+                    }
+                )
+            return error_msg

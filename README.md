@@ -8,7 +8,9 @@ This stack integrates AI development tools with Supabase as the backend storage 
 
 ### AI Tools Layer
 - **Langflow** (port 7860) - Visual AI workflow builder with direct Supabase integration
-- **Open WebUI** (port 8080) - Modern LLM chat interface
+- **Open WebUI** (port 8080) - Modern LLM chat interface with custom Tools support
+- **Meilisearch** (port 7700) - Fast search engine for indexed documentation
+- **Scrapix** (on-demand) - Web scraper for indexing documentation sites
 - **Playwright** (internal) - Browser automation for Open WebUI
 
 ### Supabase Backend Layer (Storage for AI Flows)
@@ -34,7 +36,9 @@ This stack integrates AI development tools with Supabase as the backend storage 
 - Docker Engine 20.10+
 - Docker Compose V2
 - 4GB+ RAM recommended
-- (Optional) Ollama running locally for LLM inference
+- `openssl` command (for generating secrets)
+- `curl` command (for downloading files)
+- (Optional) AI provider: Ollama (local), OpenAI, Anthropic, or OpenRouter
 
 ## 🚀 Quick Start
 
@@ -44,12 +48,31 @@ This stack integrates AI development tools with Supabase as the backend storage 
 # Clone or download the stack files
 cd ai-tool-server
 
-# Make setup script executable
-chmod +x setup.sh
+# Make scripts executable
+chmod +x setup.sh scripts/*.sh
 
-# Run setup to generate secure secrets
+# Run setup to generate secure secrets and configure the stack
 ./setup.sh
 ```
+
+The setup script will:
+- Check for required dependencies (docker, openssl, curl)
+- Validate all your inputs (URLs, emails, ports)
+- Generate cryptographically secure secrets
+- Configure service URLs and AI backends
+- Set up SMTP if needed
+- **Automatically configure Open WebUI and Langflow** with:
+  - AI model providers (Ollama, OpenAI, Anthropic, OpenRouter)
+  - Playwright service for web scraping
+  - Meilisearch for documentation search
+  - Supabase backend integration
+  - OAuth/OIDC authentication
+- **Create docker-compose.override.yml** for advanced configurations:
+  - PostgreSQL database for Open WebUI (instead of SQLite)
+  - Resource limits for production deployments
+  - Automatic backup and merge of existing override files
+
+**📖 See [AUTOMATIC_CONFIGURATION.md](AUTOMATIC_CONFIGURATION.md) for complete details on all automatic configurations.**
 
 ### 2. Create Required Supabase Files
 
@@ -92,15 +115,19 @@ Edit `.env` and update:
 
 ```bash
 # For production deployment
-SUPABASE_PUBLIC_URL=https://your-domain.com
-API_EXTERNAL_URL=https://api.your-domain.com
-SITE_URL=https://your-domain.com
+SUPABASE_PUBLIC_URL=https://db.your-domain.com
+API_EXTERNAL_URL=https://db.your-domain.com
+SITE_URL=https://db.your-domain.com:3001
 
-# If using Ollama
+# OAuth Provider Configuration
+OAUTH_PROVIDER_URL=https://auth.your-domain.com
+OAUTH_PROVIDER_NAME=SSO
+
+# AI Provider Configuration (configure one or more)
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-
-# If using OpenAI
 OPENAI_API_KEY=sk-your-openai-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+OPENROUTER_API_KEY=sk-or-your-openrouter-key
 
 # SMTP for email (if needed)
 SMTP_HOST=smtp.gmail.com
@@ -109,7 +136,22 @@ SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 ```
 
-### 4. Start the Stack
+### 4. Validate Configuration
+
+Before starting, run the health check:
+
+```bash
+./scripts/health-check.sh
+```
+
+This validates:
+- All required environment variables are set
+- No default "changeme" passwords remain
+- Required files and directories exist
+- Ports are available
+- Docker is running
+
+### 5. Start the Stack
 
 ```bash
 # Start all services
@@ -122,14 +164,15 @@ docker compose logs -f
 docker compose ps
 ```
 
-### 5. Access Services
+### 6. Access Services
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | Langflow | http://localhost:7860 | Create on first visit |
 | Open WebUI | http://localhost:8080 | Create on first visit |
-| Supabase Studio | http://localhost:3001 | From .env |
-| Supabase API | http://localhost:8000 | Use API keys |
+| **Meilisearch Web UI** | http://localhost:7700 | API Key: MEILI_MASTER_KEY from .env |
+| Supabase Studio | http://localhost:3001 | From .env (DASHBOARD_USERNAME/PASSWORD) |
+| Supabase API | http://localhost:8000 | Use API keys (ANON_KEY/SERVICE_ROLE_KEY) |
 
 ## 🔧 Configuration
 
@@ -143,6 +186,201 @@ docker compose ps
 
 1. Set `OPENAI_API_KEY` in `.env`
 2. Both Langflow and Open WebUI will use this key
+
+### Using with Anthropic
+
+1. Get your API key from [console.anthropic.com](https://console.anthropic.com/)
+2. Set `ANTHROPIC_API_KEY` in `.env`
+3. Both Langflow and Open WebUI will use this key
+
+### Using with OpenRouter
+
+1. Get your API key from [openrouter.ai](https://openrouter.ai/)
+2. Set `OPENROUTER_API_KEY` in `.env`
+3. Configure models in Open WebUI or Langflow using OpenRouter endpoints
+
+### Using Meilisearch for Document Search
+
+Meilisearch provides fast, typo-tolerant search for indexed documentation. It integrates with Open WebUI via a custom Tool.
+
+#### Initial Setup
+
+During `./setup.sh`, choose "yes" when prompted to configure Meilisearch. This will:
+- Generate a secure `MEILI_MASTER_KEY`
+- Create `scrapix.config.json` with default documentation sites to index
+
+Default indexed sites include:
+- Open WebUI documentation
+- Anthropic/Claude documentation
+- OpenAI documentation
+- Meilisearch documentation
+
+#### Indexing Documentation
+
+After starting the stack, run Scrapix to index the configured sites:
+
+```bash
+# Start all services first
+docker compose up -d
+
+# Run Scrapix to index documentation
+docker compose run scrapix
+
+# This may take several minutes depending on the number of sites
+# Scrapix will scrape and index all content into Meilisearch
+```
+
+#### Using the Meilisearch Tool in Open WebUI
+
+**Option A: Automatic Installation (Recommended)**
+
+```bash
+# Run the automatic installer script
+./scripts/install-meilisearch-tool.sh
+
+# Provide your Open WebUI admin credentials when prompted
+# The tool will be automatically installed and configured
+```
+
+**Option B: Manual Installation**
+
+1. **Access Open WebUI Admin Panel**:
+   - Go to http://localhost:8080
+   - Click your profile → Admin Panel → Tools
+
+2. **Import the Tool**:
+   - Click "Import Tool"
+   - Upload: `volumes/open-webui/tools/meilisearch_search.py`
+   - The tool will auto-configure from environment variables
+
+3. **Verify Configuration** (optional):
+   - Find "Meilisearch Documentation Search" in the tools list
+   - Click the settings icon to verify Valves (settings):
+     - **MEILISEARCH_URL**: `http://meilisearch:7700` ✅ Auto-configured
+     - **MEILISEARCH_API_KEY**: Your `MEILI_MASTER_KEY` ✅ Auto-configured
+     - **MEILISEARCH_INDEX**: `web_docs` ✅ Auto-configured
+     - **RESULTS_LIMIT**: `5` (adjust if needed)
+
+**Using the Tool in Chat:**
+
+- Start a new chat in Open WebUI
+- The AI will automatically use the Meilisearch tool when you ask questions about:
+  - Open WebUI features and configuration
+  - Claude/Anthropic API usage
+  - OpenAI API documentation
+  - Meilisearch setup and usage
+- Example queries:
+  - "How do I configure OAuth in Open WebUI?"
+  - "What are Claude's rate limits?"
+  - "How do I use OpenAI function calling?"
+
+#### Customizing Indexed Sites
+
+Edit `scrapix.config.json` to add or remove sites:
+
+```json
+{
+  "start_urls": [
+    "https://docs.openwebui.com",
+    "https://docs.anthropic.com",
+    "https://platform.openai.com/docs",
+    "https://docs.meilisearch.com",
+    "https://your-custom-docs-site.com"
+  ],
+  "strategy": "docssearch",
+  "urls_to_exclude": [
+    "*/api-reference/*",
+    "*/changelog/*"
+  ]
+}
+```
+
+After editing, re-run Scrapix to update the index:
+
+```bash
+# Clear the existing index (optional)
+curl -X DELETE "http://localhost:7700/indexes/web_docs" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY"
+
+# Re-index with updated configuration
+docker compose run scrapix
+```
+
+#### Scrapix Strategies
+
+Choose the appropriate scraping strategy in `scrapix.config.json`:
+
+- **`docssearch`** (recommended for documentation): Optimized for documentation sites with hierarchical structure
+- **`default`**: General-purpose web scraping
+- **`schema`**: Extracts structured data using schema.org markup
+
+#### Using the Meilisearch Web Interface
+
+Meilisearch includes a built-in web interface for managing and searching your indexes.
+
+**Accessing the Web Interface:**
+
+1. **Open in browser:** http://localhost:7700
+2. **Provide API Key:** Enter your `MEILI_MASTER_KEY` from `.env`
+
+**Features available in the web interface:**
+
+- **🔍 Search Preview**: Test searches across your indexes with live results
+- **📊 Index Management**: View all indexes, document counts, and settings
+- **📄 Document Browser**: Browse and inspect indexed documents
+- **⚙️ Settings**: Configure search settings, synonyms, stop words, ranking rules
+- **🔑 API Keys**: Manage API keys and permissions
+- **📈 Stats**: View index statistics and search analytics
+
+**Quick Actions:**
+
+```bash
+# Get your Meilisearch Master Key
+grep MEILI_MASTER_KEY .env
+
+# Test the web interface
+open http://localhost:7700
+# Or: xdg-open http://localhost:7700 (Linux)
+# Or: start http://localhost:7700 (Windows)
+```
+
+**Search Preview Example:**
+
+1. Access http://localhost:7700
+2. Enter your `MEILI_MASTER_KEY` when prompted
+3. Select the `web_docs` index
+4. Try a search query like "oauth configuration"
+5. View results with highlights and relevance scores
+
+**Production Deployment:**
+
+For production, you can expose the web interface via reverse proxy (see Production Deployment section) or restrict access to internal networks only.
+
+#### Monitoring Meilisearch
+
+```bash
+# Check Meilisearch health
+curl http://localhost:7700/health
+
+# View index stats
+curl "http://localhost:7700/indexes/web_docs/stats" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY"
+
+# Search directly via API
+curl "http://localhost:7700/indexes/web_docs/search" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  --data-binary '{ "q": "oauth configuration" }'
+```
+
+#### Combining with Web Search
+
+Open WebUI can use both Meilisearch (for indexed documentation) and web search (for current information):
+
+- **Meilisearch**: Fast, accurate search of indexed documentation
+- **Web Search**: Real-time information from the internet
+
+The AI will choose the appropriate tool based on your query.
 
 ### Network Architecture
 
@@ -165,7 +403,9 @@ volumes/
 │   ├── db/          # Langflow PostgreSQL data
 │   └── data/        # Langflow flows & configs
 ├── open-webui/
-│   └── data/        # Chat history & settings
+│   ├── data/        # Chat history & settings
+│   └── tools/       # Custom Open WebUI Tools (e.g., Meilisearch)
+├── meilisearch/     # Indexed documentation data
 ├── playwright/      # Browser data
 ├── db/
 │   └── data/        # Supabase PostgreSQL data
@@ -184,6 +424,23 @@ volumes/
 7. **TLS/SSL in production** - Use reverse proxy (nginx/Traefik)
 
 ## 🛠️ Management Commands
+
+### Health Check
+
+Run before and after deployment to validate configuration:
+
+```bash
+# Check configuration and service status
+./scripts/health-check.sh
+```
+
+The health check validates:
+- Environment variables are properly set
+- No insecure default passwords remain
+- All required files exist
+- Ports are available
+- Docker is running
+- AI backend is configured
 
 ### Service Control
 
@@ -254,6 +511,8 @@ OPEN_WEBUI_PORT=8081
 STUDIO_PORT=3002
 ```
 
+**Note**: Studio port defaults to 3001 to avoid conflicts with common development servers.
+
 ### Database connection issues
 
 ```bash
@@ -290,14 +549,58 @@ docker compose logs open-webui
 docker compose restart open-webui
 ```
 
+### Meilisearch search not working
+
+```bash
+# Check Meilisearch health
+docker compose ps meilisearch
+curl http://localhost:7700/health
+
+# Verify index exists and has documents
+curl "http://localhost:7700/indexes/web_docs/stats" \
+  -H "Authorization: Bearer YOUR_MEILI_MASTER_KEY"
+
+# Check if Scrapix has been run
+docker compose logs scrapix
+
+# Re-index documentation
+docker compose run scrapix
+
+# Verify the Meilisearch Tool is configured in Open WebUI
+# Admin Panel → Tools → Meilisearch Documentation Search → Settings
+# Ensure MEILISEARCH_API_KEY matches MEILI_MASTER_KEY from .env
+```
+
+### Scrapix fails to index sites
+
+```bash
+# Check Scrapix logs for errors
+docker compose logs scrapix
+
+# Verify scrapix.config.json exists and is valid
+cat scrapix.config.json | jq
+
+# Ensure Meilisearch is healthy before running Scrapix
+docker compose ps meilisearch
+
+# Try running Scrapix with verbose output
+docker compose run scrapix run -p /app/scrapix.config.json
+
+# Common issues:
+# - Network connectivity (Scrapix needs internet access)
+# - Invalid URLs in start_urls
+# - Sites blocking automated access (check robots.txt)
+# - Meilisearch not ready (wait 30s after starting)
+```
+
 ### Supabase Studio won't load
 
 ```bash
 # Check all Supabase dependencies
 docker compose ps | grep supabase
 
-# Verify analytics service (required dependency)
-docker compose logs analytics
+# Check Studio logs
+docker compose logs supabase-studio
 
 # Restart Studio
 docker compose restart supabase-studio
@@ -337,66 +640,58 @@ docker compose ps --format "table {{.Name}}\t{{.Status}}"
 # Test endpoints
 curl http://localhost:7860/health      # Langflow
 curl http://localhost:8080/health      # Open WebUI
+curl http://localhost:7700/health      # Meilisearch
 curl http://localhost:8000/health      # Supabase API
 curl http://localhost:3001/api/profile # Supabase Studio
 ```
 
 ## 🔄 Backup & Restore
 
-### Full Backup
+Automated backup and restore scripts are included in the `scripts/` directory.
+
+### Create a Backup
 
 ```bash
-#!/bin/bash
-# backup.sh - Backup all data
+# Create compressed backup
+./scripts/backup.sh
 
-BACKUP_DIR="backup-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP_DIR"
-
-# Stop services
-docker compose down
-
-# Backup volumes
-cp -r volumes "$BACKUP_DIR/"
-
-# Backup configuration
-cp .env "$BACKUP_DIR/"
-cp docker-compose.yaml "$BACKUP_DIR/"
-
-# Restart services
-docker compose up -d
-
-echo "Backup created in $BACKUP_DIR"
+# Create uncompressed backup
+./scripts/backup.sh false
 ```
+
+The backup script will:
+1. Stop services gracefully
+2. Copy all volumes (databases, configurations, files)
+3. Backup .env and docker-compose files
+4. Create backup metadata
+5. Compress the backup (optional)
+6. Restart services
+
+Backup includes:
+- All database data (Supabase, Langflow)
+- Uploaded files and storage
+- Configuration files (.env, docker-compose.yaml)
+- Edge functions
+- Logs
 
 ### Restore from Backup
 
 ```bash
-#!/bin/bash
-# restore.sh - Restore from backup
+# Restore from compressed backup
+./scripts/restore.sh backup-20240101-120000.tar.gz
 
-if [ -z "$1" ]; then
-    echo "Usage: ./restore.sh <backup-directory>"
-    exit 1
-fi
-
-BACKUP_DIR=$1
-
-# Stop services
-docker compose down -v
-
-# Restore volumes
-rm -rf volumes
-cp -r "$BACKUP_DIR/volumes" .
-
-# Restore configuration
-cp "$BACKUP_DIR/.env" .
-cp "$BACKUP_DIR/docker-compose.yaml" .
-
-# Start services
-docker compose up -d
-
-echo "Restore completed from $BACKUP_DIR"
+# Restore from uncompressed backup
+./scripts/restore.sh backup-20240101-120000
 ```
+
+The restore script will:
+1. Stop services
+2. Backup current data before restoring
+3. Extract and restore volumes
+4. Restore configuration files
+5. Restart services
+
+**Warning**: Restore will replace all current data. A safety backup is created automatically.
 
 ## 🌐 Production Deployment
 
@@ -443,8 +738,8 @@ server {
 # Supabase API
 server {
     listen 80;
-    server_name api.yourdomain.com;
-    
+    server_name db-api.yourdomain.com;
+
     location / {
         proxy_pass http://localhost:8000;
         proxy_set_header Host $host;
@@ -457,10 +752,24 @@ server {
 # Supabase Studio
 server {
     listen 80;
-    server_name studio.yourdomain.com;
-    
+    server_name db-admin.yourdomain.com;
+
     location / {
         proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Meilisearch (optional, if exposing publicly)
+server {
+    listen 80;
+    server_name search.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:7700;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -478,8 +787,9 @@ sudo apt install certbot python3-certbot-nginx
 # Obtain certificates
 sudo certbot --nginx -d langflow.yourdomain.com
 sudo certbot --nginx -d chat.yourdomain.com
-sudo certbot --nginx -d api.yourdomain.com
-sudo certbot --nginx -d studio.yourdomain.com
+sudo certbot --nginx -d db-api.yourdomain.com
+sudo certbot --nginx -d db-admin.yourdomain.com
+sudo certbot --nginx -d search.yourdomain.com
 
 # Auto-renewal (already configured by certbot)
 sudo certbot renew --dry-run
@@ -491,9 +801,9 @@ Update `.env` for production:
 
 ```bash
 # Use production domains
-SUPABASE_PUBLIC_URL=https://api.yourdomain.com
-API_EXTERNAL_URL=https://api.yourdomain.com
-SITE_URL=https://studio.yourdomain.com
+SUPABASE_PUBLIC_URL=https://db-api.yourdomain.com
+API_EXTERNAL_URL=https://db-api.yourdomain.com
+SITE_URL=https://db-admin.yourdomain.com
 
 # Disable auto-login for security
 LANGFLOW_AUTO_LOGIN=false
@@ -598,7 +908,7 @@ Use with Row Level Security (RLS) to ensure users only access their own data.
 ### Complete Integration Guide
 
 For detailed examples, flow patterns, and advanced usage, see:
-**[LANGFLOW_SUPABASE_INTEGRATION.md](computer:///mnt/user-data/outputs/LANGFLOW_SUPABASE_INTEGRATION.md)**
+**[LANGFLOW_SUPABASE_INTEGRATION.md](docs/LANGFLOW_SUPABASE_INTEGRATION.md)**
 
 This guide includes:
 - Complete flow examples (chatbot with memory, RAG, etc.)
@@ -606,6 +916,51 @@ This guide includes:
 - Vector search setup
 - Security best practices
 - Testing procedures
+
+## 🔧 Advanced Configuration
+
+### Local Development Customization
+
+For local development customizations without modifying the main docker-compose.yaml:
+
+```bash
+# Create override file
+cp docker-compose.override.yml.template docker-compose.override.yml
+
+# Edit with your customizations
+nano docker-compose.override.yml
+
+# Docker Compose automatically merges override files
+docker compose up -d
+```
+
+Use cases for override file:
+- Add development tools (pgAdmin, Redis, etc.)
+- Change resource limits
+- Add custom environment variables
+- Mount additional volumes
+- Override ports without editing .env
+
+### Edge Functions
+
+Create custom Supabase Edge Functions:
+
+```bash
+# Create a new function
+mkdir -p volumes/functions/my-function
+nano volumes/functions/my-function/index.ts
+
+# Restart functions service
+docker compose restart functions
+
+# Access at: http://localhost:8000/functions/v1/my-function
+```
+
+See `volumes/functions/README.md` for detailed examples and documentation.
+
+Example functions included:
+- `main/` - Main entrypoint (required by runtime)
+- `hello-world/` - Simple example function
 
 ## 📚 Additional Resources
 
@@ -615,6 +970,7 @@ This guide includes:
 - [Open WebUI Docs](https://docs.openwebui.com/)
 - [Supabase Docs](https://supabase.com/docs)
 - [Docker Compose Docs](https://docs.docker.com/compose/)
+- [Deno Edge Functions](https://deno.land/manual)
 
 ### Community & Support
 
@@ -643,6 +999,13 @@ Improvements and suggestions are welcome! Areas for contribution:
 - Playwright: 1.49.1
 
 To update versions, modify the version variables in `.env`.
+
+**Production Recommendation**: Pin specific versions in `.env` instead of using `latest` or `main` to ensure reproducible deployments:
+
+```bash
+LANGFLOW_VERSION=1.0.0
+OPEN_WEBUI_VERSION=v0.1.100
+```
 
 ## ⚠️ Known Limitations
 
@@ -720,11 +1083,38 @@ This integrated stack is ideal for:
 
 If you encounter issues:
 
-1. Check the troubleshooting section above
-2. Review service logs: `docker compose logs [service-name]`
-3. Verify environment configuration
-4. Check GitHub issues for known problems
-5. Ensure system meets prerequisites
+1. **Run health check**: `./scripts/health-check.sh`
+2. **Check the troubleshooting section** above
+3. **Review service logs**: `docker compose logs [service-name]`
+4. **Verify environment configuration**: `cat .env | grep -v "^#" | grep -v "^$"`
+5. **Check GitHub issues** for known problems
+6. **Ensure system meets prerequisites**
+
+### Useful Diagnostic Commands
+
+```bash
+# Full health check
+./scripts/health-check.sh
+
+# Check all service status
+docker compose ps
+
+# View all logs
+docker compose logs
+
+# Check specific service
+docker compose logs -f langflow
+
+# Verify Docker resources
+docker system df
+docker stats
+
+# Test database connection
+docker compose exec db pg_isready -U postgres
+
+# Check network connectivity
+docker compose exec langflow curl http://kong:8000/health
+```
 
 ## 📄 License
 
