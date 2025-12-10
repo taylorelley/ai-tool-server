@@ -62,12 +62,6 @@ if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
     exit 0
 fi
 
-# Check if docker compose is available
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}✗ Error: docker not found${NC}"
-    exit 1
-fi
-
 echo -e "${BLUE}Step 1: Stopping services...${NC}"
 docker compose down
 echo -e "${GREEN}✓${NC} Services stopped"
