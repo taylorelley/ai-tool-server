@@ -124,7 +124,10 @@ services:
 
   meilisearch-ui:
     container_name: meilisearch-ui
-    image: ghcr.io/taylorelley/meilisearch-simple-hybrid-search-frontend:latest
+    build:
+      context: ./meilisearch-ui
+      dockerfile: Dockerfile
+    image: ai-tool-server/meilisearch-ui:local
     restart: unless-stopped
     ports:
       - "${MEILISEARCH_UI_PORT:-7701}:80"

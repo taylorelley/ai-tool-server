@@ -1,0 +1,2 @@
+# Don't include README in the Docker build context
+README.md
