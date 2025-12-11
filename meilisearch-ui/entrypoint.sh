@@ -5,22 +5,73 @@ set -e
 # This script replaces environment variable placeholders in the built static files
 # with actual runtime values, solving the Vite build-time vs runtime issue.
 
+# POSIX-compatible JSON string escaping function
+# Works with Alpine/BusyBox awk (no GNU extensions required)
+# Escapes: backslash (\), double-quote ("), newline (\n), carriage return (\r), tab (\t)
+json_escape() {
+    printf '%s' "$1" | awk '
+    BEGIN {
+        # No BEGIN initialization needed for POSIX awk
+    }
+    {
+        # Process each line
+        line = $0
+        result = ""
+
+        # Process character by character
+        len = length(line)
+        for (i = 1; i <= len; i++) {
+            char = substr(line, i, 1)
+
+            # Escape special characters
+            if (char == "\\") {
+                result = result "\\\\"
+            } else if (char == "\"") {
+                result = result "\\\""
+            } else if (char == "\t") {
+                result = result "\\t"
+            } else if (char == "\r") {
+                result = result "\\r"
+            } else {
+                result = result char
+            }
+        }
+
+        # Print the result
+        if (NR > 1) {
+            # For lines after the first, prepend \n for the previous newline
+            printf "\\n%s", result
+        } else {
+            printf "%s", result
+        }
+    }
+    '
+}
+
 echo "🔧 Injecting runtime environment variables into Meilisearch UI..."
 
 # Path to the built static files (typical nginx serving path)
 STATIC_PATH="/usr/share/nginx/html"
+
+# Escape all environment variables for JSON
+ESCAPED_HOST=$(json_escape "${VITE_MEILISEARCH_HOST:-http://localhost:7700}")
+ESCAPED_API_KEY=$(json_escape "${VITE_MEILISEARCH_API_KEY}")
+ESCAPED_INDEX=$(json_escape "${VITE_MEILISEARCH_INDEX:-web_docs}")
+ESCAPED_TITLE=$(json_escape "${VITE_APP_TITLE:-AI Tool Server Search}")
+ESCAPED_RATIO=$(json_escape "${VITE_MEILISEARCH_SEMANTIC_RATIO:-0.5}")
+ESCAPED_EMBEDDER=$(json_escape "${VITE_MEILISEARCH_EMBEDDER:-default}")
 
 # Create a runtime config JavaScript file that will be loaded by the app
 cat > "${STATIC_PATH}/config.js" <<EOF
 // Runtime configuration injected by entrypoint.sh
 // This file is generated when the container starts, not at build time
 window.__RUNTIME_CONFIG__ = {
-  VITE_MEILISEARCH_HOST: "${VITE_MEILISEARCH_HOST:-http://localhost:7700}",
-  VITE_MEILISEARCH_API_KEY: "${VITE_MEILISEARCH_API_KEY}",
-  VITE_MEILISEARCH_INDEX: "${VITE_MEILISEARCH_INDEX:-web_docs}",
-  VITE_APP_TITLE: "${VITE_APP_TITLE:-AI Tool Server Search}",
-  VITE_MEILISEARCH_SEMANTIC_RATIO: "${VITE_MEILISEARCH_SEMANTIC_RATIO:-0.5}",
-  VITE_MEILISEARCH_EMBEDDER: "${VITE_MEILISEARCH_EMBEDDER:-default}"
+  VITE_MEILISEARCH_HOST: "${ESCAPED_HOST}",
+  VITE_MEILISEARCH_API_KEY: "${ESCAPED_API_KEY}",
+  VITE_MEILISEARCH_INDEX: "${ESCAPED_INDEX}",
+  VITE_APP_TITLE: "${ESCAPED_TITLE}",
+  VITE_MEILISEARCH_SEMANTIC_RATIO: "${ESCAPED_RATIO}",
+  VITE_MEILISEARCH_EMBEDDER: "${ESCAPED_EMBEDDER}"
 };
 EOF
 

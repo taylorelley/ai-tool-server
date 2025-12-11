@@ -23,7 +23,8 @@ This directory contains a custom Dockerfile and entrypoint script that **inject 
 
 2. **Entrypoint Script** (`entrypoint.sh`)
    - Runs when the container starts (not when the image is built)
-   - Creates a `config.js` file with runtime environment variables
+   - Uses a **POSIX-compatible JSON escaping function** to safely handle special characters
+   - Creates a `config.js` file with properly escaped runtime environment variables
    - Injects this config file into `index.html`
    - The frontend loads this config file and uses the runtime values
 
@@ -31,11 +32,47 @@ This directory contains a custom Dockerfile and entrypoint script that **inject 
    - Now builds the image locally instead of using the pre-built one
    - Environment variables are properly injected at container startup
 
+### JSON Escaping
+
+The entrypoint script includes a `json_escape()` function that properly escapes special characters for JSON strings:
+
+- **Backslashes** (`\`) → `\\`
+- **Double quotes** (`"`) → `\"`
+- **Tabs** (`\t`) → `\\t`
+- **Carriage returns** (`\r`) → `\\r`
+- **Newlines** (`\n`) → `\\n`
+
+This ensures that environment variables containing special characters are safely embedded in the generated JavaScript configuration file without breaking the syntax.
+
+**Alpine/BusyBox Compatibility**: The function uses standard POSIX awk (no GNU extensions) and works correctly in Alpine Linux containers with BusyBox utilities.
+
 ### Files
 
 - **`Dockerfile`** - Extends base image with custom entrypoint
 - **`entrypoint.sh`** - Script that injects runtime environment variables
+- **`test-json-escape.sh`** - Unit tests for JSON escaping function
+- **`test-alpine.sh`** - Integration test for Alpine/BusyBox compatibility
 - **`README.md`** - This documentation
+
+### Testing
+
+The JSON escaping function has been thoroughly tested:
+
+```bash
+# Run unit tests (10 test cases)
+sh meilisearch-ui/test-json-escape.sh
+
+# Run Alpine compatibility test
+sh meilisearch-ui/test-alpine.sh
+```
+
+All tests validate:
+- Simple strings (no escaping needed)
+- Strings with double quotes
+- Strings with backslashes
+- Strings with tabs and newlines
+- Complex strings with multiple special characters
+- Real-world Meilisearch configuration scenarios
 
 ## Usage
 
